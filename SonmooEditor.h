@@ -6,11 +6,13 @@ constexpr auto panel = 0xff192234;
 constexpr auto track = 0xff2c394f;
 constexpr auto ink = 0xfff2f5fc;
 constexpr auto muted = 0xffaab9ce;
-constexpr auto accent = effect == 0 ? 0xff52dace : effect == 1 ? 0xffc2a2ff : 0xffffbe77;
+constexpr auto accent = effect == 0 ? 0xff52dace : effect == 1 ? 0xffc2a2ff :
+                        effect == 3 ? 0xff9ce1a5 : effect == 4 ? 0xfff3a1ac : 0xffffbe77;
+constexpr bool hasReduction = effect == 1 || effect == 2 || effect == 3;
 
 struct Activity
 {
-    std::atomic<float> input{0}, output{0}, reduction{0};
+    std::atomic<float> input{0}, output{0}, reduction{0}, detection{0};
 };
 
 class DialStyle final : public juce::LookAndFeel_V4
@@ -88,13 +90,30 @@ public:
             dial("makeup", "Makeup", " dB");
             dial("mix", "Mix", " %");
         }
-        else
+        else if constexpr (effect == 2)
         {
             dial("threshold", "Threshold", " dB");
             dial("ceiling", "Ceiling", " dBFS");
             dial("release", "Release", " ms");
         }
-        setSize(540, effect == 0 ? 432 : effect == 1 ? 397 : 282);
+        else if constexpr (effect == 3)
+        {
+            dial("threshold", "Threshold", " dB");
+            dial("range", "Range", " dB");
+            dial("width", "Detection Width", " %");
+            dial("mode", "Wide to Split", " %");
+            history.fill(-80);
+            addToggle(ping, pingAttachment, "monitor", "Audition sibilance");
+            addToggle(preRead, preReadAttachment, "lookahead", "12 ms lookahead");
+        }
+        else
+        {
+            dial("drive", "Drive", "");
+            dial("tone", "Tone", " %");
+            dial("trim", "Output Trim", " dB");
+            dial("mix", "Mix", " %");
+        }
+        setSize(540, effect == 0 ? 432 : effect == 1 ? 397 : effect == 3 ? 411 : 282);
         startTimerHz(30);
     }
 
@@ -114,7 +133,12 @@ public:
         g.fillRoundedRectangle(24, 83, float(getWidth() - 48), float(meterHeight()), 10);
         meter(g, 95, "INPUT", shownInput, false);
         meter(g, 116, "OUTPUT", shownOutput, false);
-        if constexpr (effect != 0) meter(g, 137, "REDUCTION", shownReduction, true);
+        if constexpr (hasReduction) meter(g, 137, "REDUCTION", shownReduction, true);
+        if constexpr (effect == 3)
+        {
+            meter(g, 158, "DETECTION", shownDetection, false);
+            drawDetection(g);
+        }
         if constexpr (effect == 0)
         {
             g.setColour(juce::Colour(muted));
@@ -125,8 +149,8 @@ public:
 
     void resized() override
     {
-        const int columns = effect == 1 ? 4 : 3;
-        const int top = effect == 0 ? 153 : 174;
+        const int columns = effect == 0 || effect == 2 ? 3 : 4;
+        const int top = effect == 3 ? 254 : hasReduction ? 174 : 153;
         const int width = (getWidth() - 48) / columns;
         const auto count = static_cast<int>(controls.size());
         for (int i = 0; i < count; ++i)
@@ -142,6 +166,11 @@ public:
         {
             division.setBounds(113, 390, 125, 26);
             ping.setBounds(260, 390, 115, 26);
+        }
+        if constexpr (effect == 3)
+        {
+            ping.setBounds(35, 368, 164, 26);
+            preRead.setBounds(211, 368, 152, 26);
         }
     }
 
@@ -180,7 +209,41 @@ private:
         controls.push_back(std::move(control));
     }
 
-    static constexpr int meterHeight() { return effect == 0 ? 57 : 78; }
+    void addToggle(juce::ToggleButton& button, std::unique_ptr<State::ButtonAttachment>& attachment,
+                   const char* id, const char* label)
+    {
+        button.setButtonText(label);
+        button.setColour(juce::ToggleButton::textColourId, juce::Colour(ink));
+        button.setColour(juce::ToggleButton::tickColourId, juce::Colour(accent));
+        addAndMakeVisible(button);
+        attachment = std::make_unique<State::ButtonAttachment>(state, id, button);
+    }
+
+    static constexpr int meterHeight() { return effect == 3 ? 99 : hasReduction ? 78 : 57; }
+
+    void drawDetection(juce::Graphics& g)
+    {
+        const juce::Rectangle<float> area(24, 190, float(getWidth() - 48), 52);
+        g.setColour(juce::Colour(panel));
+        g.fillRoundedRectangle(area, 8);
+        const auto y = [&] (float db)
+        {
+            return area.getBottom() - 5 - juce::jlimit(0.0f, 1.0f, (db + 80) / 80) * (area.getHeight() - 10);
+        };
+        g.setColour(juce::Colour(track).brighter(.5f));
+        const float line = y(state.getRawParameterValue("threshold")->load());
+        g.drawHorizontalLine(int(line), area.getX() + 7, area.getRight() - 7);
+        juce::Path curve;
+        for (size_t i = 0; i < history.size(); ++i)
+        {
+            const float x = area.getX() + 8 + float(i) * (area.getWidth() - 16) / float(history.size() - 1);
+            const float point = y(history[(historyIndex + i) % history.size()]);
+            if (i == 0) curve.startNewSubPath(x, point);
+            else curve.lineTo(x, point);
+        }
+        g.setColour(juce::Colour(accent));
+        g.strokePath(curve, juce::PathStrokeType(1.6f));
+    }
 
     void meter(juce::Graphics& g, int y, const char* label, float db, bool reduction)
     {
@@ -206,7 +269,16 @@ private:
         shownInput = std::max(shownInput - 1.5f, db(levels.input.exchange(0)));
         shownOutput = std::max(shownOutput - 1.5f, db(levels.output.exchange(0)));
         shownReduction = std::max(shownReduction - 0.7f, levels.reduction.exchange(0));
-        repaint(24, 83, getWidth() - 48, meterHeight());
+        if constexpr (effect == 3)
+        {
+            const float detected = juce::Decibels::gainToDecibels(levels.detection.exchange(0), -80.0f);
+            shownDetection = std::max(shownDetection - 1.5f, detected);
+            history[historyIndex] = detected;
+            historyIndex = (historyIndex + 1) % history.size();
+            repaint(24, 83, getWidth() - 48, 160);
+        }
+        else
+            repaint(24, 83, getWidth() - 48, meterHeight());
     }
 
     State& state;
@@ -214,9 +286,12 @@ private:
     DialStyle style;
     std::vector<std::unique_ptr<Control>> controls;
     juce::ComboBox division;
-    juce::ToggleButton ping;
+    juce::ToggleButton ping, preRead;
     std::unique_ptr<State::ComboBoxAttachment> syncAttachment;
-    std::unique_ptr<State::ButtonAttachment> pingAttachment;
+    std::unique_ptr<State::ButtonAttachment> pingAttachment, preReadAttachment;
+    std::array<float, 120> history{};
+    size_t historyIndex = 0;
+    float shownDetection = -60;
     float shownInput = -60, shownOutput = -60, shownReduction = 0;
 };
 }

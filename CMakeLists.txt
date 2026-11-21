@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(SonmooKit VERSION 0.2.0 LANGUAGES C CXX)
+project(SonmooKit VERSION 0.3.0 LANGUAGES C CXX)
 include(FetchContent)
 FetchContent_Declare(JUCE GIT_REPOSITORY https://github.com/juce-framework/JUCE.git
     GIT_TAG 8.0.6 GIT_SHALLOW TRUE)
@@ -22,3 +22,5 @@ endfunction()
 add_effect(StereoEcho Stec 0 Delay)
 add_effect(SoftCompressor Sfcp 1 Dynamics)
 add_effect(PeakCeiling Pkcl 2 Dynamics)
+add_effect(SibilanceControl Sbct 3 Dynamics)
+add_effect(DriveTone Drtn 4 Distortion)

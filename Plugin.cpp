@@ -45,11 +45,29 @@ State::ParameterLayout makeLayout()
         add("makeup", "Makeup (dB)", -12, 24, 0);
         add("mix", "Mix (%)", 0, 100, 100);
     }
-    else
+    else if constexpr (effect == 2)
     {
         add("threshold", "Threshold (dB)", -36, 0, 0);
         add("ceiling", "Ceiling (dBFS)", -18, 0, -0.3f);
         add("release", "Release (ms)", 5, 1000, 80);
+    }
+    else if constexpr (effect == 3)
+    {
+        add("threshold", "Threshold (dB)", -80, 0, -12.5f);
+        add("range", "Range (dB)", -48, 0, -14);
+        add("width", "Detection Width (%)", 0, 100, 50);
+        add("mode", "Wide to Split (%)", 0, 100, 50);
+        layout.add(std::make_unique<juce::AudioParameterBool>(
+            juce::ParameterID{"monitor", 1}, "Audition Sibilance", false));
+        layout.add(std::make_unique<juce::AudioParameterBool>(
+            juce::ParameterID{"lookahead", 1}, "12 ms Lookahead", false));
+    }
+    else
+    {
+        add("drive", "Drive", 0, 10, 0);
+        add("tone", "Tone (%)", -100, 100, 0);
+        add("trim", "Output Trim (dB)", -24, 12, 0);
+        add("mix", "Mix (%)", 0, 100, 100);
     }
     return layout;
 }
@@ -92,13 +110,13 @@ public:
     {
         rate = std::max(1.0, sampleRate);
         lookahead = std::max(1, juce::roundToInt(rate * 0.002));
-        if constexpr (effect != 1)
+        if constexpr (effect == 0 || effect == 2 || effect == 3)
         {
-            const int size = effect == 0 ? static_cast<int>(rate * 8) + 2 : lookahead + 1;
+            const int size = effect == 0 ? static_cast<int>(rate * 8) + 2 : effect == 3 ? juce::roundToInt(rate * .012) + 1 : lookahead + 1;
             for (auto& line : ring)
                 line.resize(static_cast<size_t>(size));
         }
-        setLatencySamples(effect == 2 ? lookahead : 0);
+        setLatencySamples(effect == 2 ? lookahead : effect == 3 && param("lookahead") > .5f ? int(ring[0].size()) - 1 : 0);
         reset();
     }
 
@@ -111,11 +129,14 @@ public:
         activity.output.store(0);
         activity.reduction.store(0);
         cursor = hold = 0;
-        reductionDb = 0;
+        reductionDb = detectionEnvelope = driveBlend = 0;
         limiterGain = 1;
         delay = 0;
         lowpass = {};
         bass = {};
+        detectorHigh = {};
+        detectorLow = {};
+        activity.detection.store(0);
     }
 
     void processBlock(juce::AudioBuffer<float>& audio, juce::MidiBuffer&) override
@@ -126,6 +147,8 @@ public:
         if constexpr (effect == 0) echo(audio);
         if constexpr (effect == 1) compress(audio);
         if constexpr (effect == 2) limit(audio);
+        if constexpr (effect == 3) deEss(audio);
+        if constexpr (effect == 4) driveTone(audio);
         updatePeak(activity.output, signalPeak(audio));
         updatePeak(activity.reduction, blockReduction);
     }
@@ -292,9 +315,89 @@ private:
         blockReduction = -juce::Decibels::gainToDecibels(minimumGain, -120.0f);
     }
 
+    void deEss(juce::AudioBuffer<float>& audio)
+    {
+        const int length = int(ring[0].size());
+        if (length < 2) return;
+        const bool preRead = param("lookahead") > .5f;
+        const int latency = preRead ? length - 1 : 0;
+        if (getLatencySamples() != latency)
+            setLatencySamples(latency);
+
+        const bool audition = param("monitor") > .5f;
+        const float width = param("width") * .01f;
+        const float detectorHP = pole(6400 - 3400 * width);
+        const float detectorLP = pole(std::min(float(rate * .45), 8500 + 4500 * width));
+        const float split = pole(4000);
+        const float threshold = param("threshold");
+        const float maximum = -param("range");
+        const float splitMix = param("mode") * .01f;
+        const float attack = decay(.35f), release = decay(48);
+        const float holdDecay = decay(17);
+        const int channels = audio.getNumChannels();
+        auto samples = audio.getArrayOfWritePointers();
+        float detectedPeak = 0;
+        for (int i = 0; i < audio.getNumSamples(); ++i)
+        {
+            float peak = 0;
+            for (int ch = 0; ch < channels; ++ch)
+            {
+                const float input = samples[ch][i];
+                detectorLow[ch] += detectorHP * (input - detectorLow[ch]);
+                detectorHigh[ch] += detectorLP * (input - detectorLow[ch] - detectorHigh[ch]);
+                peak = std::max(peak, std::abs(detectorHigh[ch]));
+                ring[ch][cursor] = input;
+            }
+            detectedPeak = std::max(detectedPeak, peak);
+            detectionEnvelope = std::max(peak, detectionEnvelope * holdDecay);
+            const float db = juce::Decibels::gainToDecibels(detectionEnvelope, -100.0f);
+            const float target = std::clamp((db - threshold) * .8f, 0.0f, maximum);
+            const float smoothing = target > reductionDb ? attack : release;
+            reductionDb = target + smoothing * (reductionDb - target);
+            blockReduction = std::max(blockReduction, reductionDb);
+            const float removedGain = 1 - juce::Decibels::decibelsToGain(-reductionDb);
+            const int next = (cursor + 1) % length;
+            for (int ch = 0; ch < channels; ++ch)
+            {
+                const float dry = ring[ch][preRead ? next : cursor];
+                bass[ch] += split * (dry - bass[ch]);
+                const float removed = removedGain * (dry - splitMix * bass[ch]);
+                samples[ch][i] = audition ? removed : dry - removed;
+            }
+            cursor = next;
+        }
+        updatePeak(activity.detection, detectedPeak);
+    }
+
+    void driveTone(juce::AudioBuffer<float>& audio)
+    {
+        const float drive = param("drive") * .1f;
+        const float pregain = juce::Decibels::decibelsToGain(30.0f * drive);
+        const float compensation = 1.0f / std::sqrt(pregain);
+        const float trim = juce::Decibels::decibelsToGain(param("trim"));
+        const float mix = param("mix") * .01f;
+        const float tone = param("tone") * .01f;
+        const float rolloff = pole(std::min(float(rate * .45), 6500 + tone * 4000));
+        const float smooth = 1 - decay(10);
+        auto samples = audio.getArrayOfWritePointers();
+        for (int i = 0; i < audio.getNumSamples(); ++i)
+        {
+            driveBlend += smooth * (drive - driveBlend);
+            const float amount = mix * std::min(1.0f, driveBlend * 4.0f);
+            for (int ch = 0; ch < audio.getNumChannels(); ++ch)
+            {
+                const float dry = samples[ch][i];
+                const float shaped = std::tanh(dry * pregain) * compensation;
+                lowpass[ch] += rolloff * (shaped - lowpass[ch]);
+                samples[ch][i] = trim * (dry + amount * (lowpass[ch] - dry));
+            }
+        }
+    }
+
     State state;
     Activity activity;
-    float blockReduction = 0;
+    float blockReduction = 0, detectionEnvelope = 0, driveBlend = 0;
+    std::array<float, 2> detectorLow{}, detectorHigh{};
     std::array<std::vector<float>, 2> ring;
     std::array<float, 2> lowpass{}, bass{};
     double rate = 44100, delay = 0;
