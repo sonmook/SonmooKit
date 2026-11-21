@@ -1,6 +1,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <cmath>
 #include <memory>
 #include <vector>
@@ -8,6 +9,10 @@
 namespace {
 constexpr int effect = EFFECT_KIND;
 using State = juce::AudioProcessorValueTreeState;
+
+}
+#include "SonmooEditor.h"
+namespace {
 
 State::ParameterLayout makeLayout()
 {
@@ -67,7 +72,7 @@ public:
     bool hasEditor() const override { return true; }
     juce::AudioProcessorEditor* createEditor() override
     {
-        return new juce::GenericAudioProcessorEditor(*this);
+        return new SonmooEditor(*this, state, activity);
     }
     int getNumPrograms() override { return 1; }
     int getCurrentProgram() override { return 0; }
@@ -102,6 +107,9 @@ public:
     {
         for (auto& line : ring)
             std::fill(line.begin(), line.end(), 0.0f);
+        activity.input.store(0);
+        activity.output.store(0);
+        activity.reduction.store(0);
         cursor = hold = 0;
         reductionDb = 0;
         limiterGain = 1;
@@ -113,9 +121,13 @@ public:
     void processBlock(juce::AudioBuffer<float>& audio, juce::MidiBuffer&) override
     {
         juce::ScopedNoDenormals guard;
+        updatePeak(activity.input, signalPeak(audio));
+        blockReduction = 0;
         if constexpr (effect == 0) echo(audio);
         if constexpr (effect == 1) compress(audio);
         if constexpr (effect == 2) limit(audio);
+        updatePeak(activity.output, signalPeak(audio));
+        updatePeak(activity.reduction, blockReduction);
     }
 
     void getStateInformation(juce::MemoryBlock& data) override
@@ -137,6 +149,21 @@ private:
     float pole(float hz) const
     {
         return float(-std::expm1(-2.0 * juce::MathConstants<double>::pi * hz / rate));
+    }
+
+    static float signalPeak(const juce::AudioBuffer<float>& audio)
+    {
+        float peak = 0;
+        for (int ch = 0; ch < audio.getNumChannels(); ++ch)
+            peak = std::max(peak, audio.getMagnitude(ch, 0, audio.getNumSamples()));
+        return peak;
+    }
+
+    static void updatePeak(std::atomic<float>& meter, float peak)
+    {
+        float previous = meter.load(std::memory_order_relaxed);
+        while (peak > previous &&
+               !meter.compare_exchange_weak(previous, peak, std::memory_order_relaxed)) {}
     }
 
     void echo(juce::AudioBuffer<float>& audio)
@@ -200,6 +227,7 @@ private:
         const float attack = decay(param("attack")), release = decay(param("release"));
         const float makeup = juce::Decibels::decibelsToGain(param("makeup"));
         const float mix = param("mix") * 0.01f;
+        float maximumReduction = 0;
         for (int i = 0; i < audio.getNumSamples(); ++i)
         {
             float peak = 0;
@@ -214,10 +242,12 @@ private:
             }
             const float coefficient = target > reductionDb ? attack : release;
             reductionDb = target + coefficient * (reductionDb - target);
+            maximumReduction = std::max(maximumReduction, reductionDb);
             const float gain = 1 - mix + mix * makeup * juce::Decibels::decibelsToGain(-reductionDb);
             for (int ch = 0; ch < channels; ++ch)
                 samples[ch][i] *= gain;
         }
+        blockReduction = maximumReduction;
     }
 
     void limit(juce::AudioBuffer<float>& audio)
@@ -229,6 +259,7 @@ private:
         const float ceiling = juce::Decibels::decibelsToGain(param("ceiling"));
         const float drive = ceiling / juce::Decibels::decibelsToGain(param("threshold"));
         const float release = decay(param("release"));
+        float minimumGain = 1;
         for (int i = 0; i < audio.getNumSamples(); ++i)
         {
             float peak = 0;
@@ -256,10 +287,14 @@ private:
                 ? std::min(limiterGain, ceiling / delayedPeak) : limiterGain;
             for (int ch = 0; ch < channels; ++ch)
                 samples[ch][i] = ring[ch][cursor] * gain;
+            minimumGain = std::min(minimumGain, gain);
         }
+        blockReduction = -juce::Decibels::gainToDecibels(minimumGain, -120.0f);
     }
 
     State state;
+    Activity activity;
+    float blockReduction = 0;
     std::array<std::vector<float>, 2> ring;
     std::array<float, 2> lowpass{}, bass{};
     double rate = 44100, delay = 0;

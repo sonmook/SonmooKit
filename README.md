@@ -1,6 +1,6 @@
-# AudioKit para FL Studio
+# SonmooKit para FL Studio
 
-Projeto C++ com JUCE 8.0.6. Gera três efeitos VST3 x64 independentes, com editor genérico do JUCE, parâmetros automatizáveis e restauração de estado no projeto.
+Projeto C++ com JUCE 8.0.6. Gera três efeitos VST3 x64 independentes, com interface própria, medidores em tempo real, parâmetros automatizáveis e restauração de estado no projeto.
 
 | Efeito | Referência funcional | Controles |
 | --- | --- | --- |
@@ -26,4 +26,4 @@ Os bundles completos ficam em `build/<Efeito>_artefacts/Release/VST3/`. Copie ca
 - PeakCeiling. Use um sinal com transientes acima do threshold e verifique o teto de pico de amostra. Confira alinhamento com a compensação de latência do Mixer. O teto se aplica a amostras digitais.
 - Salve e reabra o projeto do FL Studio para verificar a restauração de parâmetros.
 
-Esta entrega contém código-fonte. A compilação e o carregamento no FL Studio estão pendentes. O RAR serviu como referência de inventário e metadados. O processamento é original e o REA não foi executado.
+A versão 0.2.0 adiciona controles próprios, medidores de entrada e saída e indicação de redução de ganho no compressor e no limiter. Para atualizar, feche o FL Studio, substitua os três bundles completos na pasta VST3 e faça uma nova busca com a verificação de plugins ativada. O RAR serviu como referência de inventário e metadados. O processamento é original e o REA não foi executado.

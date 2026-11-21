@@ -1,12 +1,12 @@
 cmake_minimum_required(VERSION 3.22)
-project(AudioKit VERSION 0.1.0 LANGUAGES C CXX)
+project(SonmooKit VERSION 0.2.0 LANGUAGES C CXX)
 include(FetchContent)
 FetchContent_Declare(JUCE GIT_REPOSITORY https://github.com/juce-framework/JUCE.git
     GIT_TAG 8.0.6 GIT_SHALLOW TRUE)
 FetchContent_MakeAvailable(JUCE)
 function(add_effect target code kind category)
     juce_add_plugin(${target}
-        COMPANY_NAME "AudioKit"
+        COMPANY_NAME "SonmooKit"
         BUNDLE_ID "org.audiokit.${target}"
         PLUGIN_MANUFACTURER_CODE Akfx
         PLUGIN_CODE ${code}
