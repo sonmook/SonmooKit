@@ -137,6 +137,7 @@ public:
         detectorHigh = {};
         detectorLow = {};
         activity.detection.store(0);
+        activity.echoTimeMs.store(0);
     }
 
     void processBlock(juce::AudioBuffer<float>& audio, juce::MidiBuffer&) override
@@ -212,6 +213,7 @@ private:
             seconds = beats[sync] * 60.0 / std::max(30.0, bpm);
         }
         const double target = std::clamp(seconds * rate, 1.0, double(length - 2));
+        activity.echoTimeMs.store(float(target * 1000.0 / rate), std::memory_order_relaxed);
         if (delay == 0) delay = target;
         const double slew = 1.0 - decay(25);
         for (int i = 0; i < audio.getNumSamples(); ++i)

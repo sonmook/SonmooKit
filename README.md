@@ -10,6 +10,10 @@ Projeto C++ com JUCE 8.0.6. Gera cinco efeitos VST3 x64 independentes, com inter
 | DriveTone | OneKnob Driver | Drive de 0 a 10, tonalidade, ajuste de saída e mix |
 | PeakCeiling | L1 | Threshold, teto de pico de amostra em dBFS, release e lookahead fixo de 2 ms com latência reportada ao host |
 
+## Interface 0.4.0
+
+StereoEcho destaca o tempo do delay. SoftCompressor e PeakCeiling têm faders e medidores verticais. SibilanceControl dá mais espaço ao histórico da detecção. DriveTone mantém o painel compacto centrado no Drive. Os IDs VST3 e parâmetros dos cinco efeitos foram preservados.
+
 ## Compilar no Windows
 
 Requer Visual Studio 2022 com **Desktop development with C++**, Windows SDK, Git, CMake 3.22 ou superior e conexão para obter o JUCE. Execute na pasta que contém este README.
