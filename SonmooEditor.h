@@ -30,6 +30,14 @@ public:
     {
         const juce::Rectangle<float> bounds{float(x), float(y), float(w), float(h)};
         const auto centre = bounds.getCentre();
+        if constexpr (effect == 4)
+        {
+            if (w > 150 && h > 150)
+            {
+                drawDriveDial(g, centre, std::min(w, h) * 0.5f, position, start, end);
+                return;
+            }
+        }
         const float radius = std::min(w, h) * 0.5f - 6.0f;
         const float angle = start + position * (end - start);
         const auto arc = [&] (float stop, juce::Colour colour)
@@ -51,6 +59,62 @@ public:
         const auto tip = centre.getPointOnCircumference(face - 5, angle);
         const auto base = centre.getPointOnCircumference(face - 14, angle);
         g.drawLine({base, tip}, 2.6f);
+    }
+
+private:
+    static void drawDriveDial(juce::Graphics& g, juce::Point<float> centre, float space,
+                              float position, float start, float end)
+    {
+        const float angle = start + position * (end - start);
+        const float radius = space - 22;
+        const auto circle = [centre] (float r)
+        {
+            return juce::Rectangle<float>(centre.x - r, centre.y - r, r * 2, r * 2);
+        };
+
+        const auto ring = [&] (float stop, juce::Colour colour)
+        {
+            juce::Path path;
+            path.addCentredArc(centre.x, centre.y, radius, radius, 0, start, stop, true);
+            g.setColour(colour);
+            g.strokePath(path, juce::PathStrokeType(4, juce::PathStrokeType::curved,
+                                                   juce::PathStrokeType::rounded));
+        };
+        ring(end, juce::Colour(0xff53392f));
+        if (position > 0) ring(angle, juce::Colour(accent));
+
+        for (int mark = 0; mark <= 10; ++mark)
+        {
+            const auto tickAngle = start + (end - start) * (float(mark) / 10.0f);
+            const auto tickStart = centre.getPointOnCircumference(radius + 5, tickAngle);
+            const auto tickEnd = centre.getPointOnCircumference(radius + 10, tickAngle);
+            g.setColour(juce::Colour(mark <= position * 10 ? accent : muted));
+            g.drawLine(juce::Line<float>(tickStart, tickEnd), 1.2f);
+            if (mark == 0 || mark == 5 || mark == 10)
+            {
+                const auto label = centre.getPointOnCircumference(radius + 17, tickAngle);
+                g.setFont(juce::FontOptions(11.0f, juce::Font::bold));
+                g.drawText(juce::String(mark), int(label.x) - 12, int(label.y) - 7,
+                           24, 14, juce::Justification::centred);
+            }
+        }
+
+        auto rim = circle(radius - 9);
+        g.setColour(juce::Colour(0xff08090b));
+        g.fillEllipse(rim.translated(0, 3).expanded(2));
+        g.setGradientFill({juce::Colour(0xffb88968), rim.getTopLeft(),
+                           juce::Colour(0xff564133), rim.getBottomRight(), false});
+        g.fillEllipse(rim);
+        const auto face = circle(radius - 13);
+        g.setGradientFill({juce::Colour(0xff535159), face.getTopLeft(),
+                           juce::Colour(0xff232128), face.getBottomRight(), false});
+        g.fillEllipse(face);
+        g.setColour(juce::Colour(0xff716b71));
+        g.drawEllipse(face.reduced(3), 1);
+        g.setColour(juce::Colour(accent));
+        const auto a = centre.getPointOnCircumference(radius - 20, angle);
+        const auto b = centre.getPointOnCircumference(radius - 34, angle);
+        g.drawLine(juce::Line<float>(a, b), 3.5f);
     }
 };
 
@@ -113,7 +177,13 @@ public:
             dial("trim", "Output Trim", " dB");
             dial("mix", "Mix", " %");
         }
-        setSize(540, effect == 0 ? 432 : effect == 1 ? 397 : effect == 3 ? 411 : 282);
+        if constexpr (effect == 4)
+        {
+            controls.front()->slider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 64, 25);
+            setSize(356, 482);
+        }
+        else
+            setSize(540, effect == 0 ? 432 : effect == 1 ? 397 : effect == 3 ? 411 : 282);
         startTimerHz(30);
     }
 
@@ -121,6 +191,11 @@ public:
 
     void paint(juce::Graphics& g) override
     {
+        if constexpr (effect == 4)
+        {
+            paintDrive(g);
+            return;
+        }
         g.fillAll(juce::Colour(background));
         g.setColour(juce::Colour(accent));
         g.fillRoundedRectangle(24, 24, 4, 43, 2);
@@ -149,6 +224,18 @@ public:
 
     void resized() override
     {
+        if constexpr (effect == 4)
+        {
+            controls[0]->label.setBounds(0, 83, getWidth(), 19);
+            controls[0]->slider.setBounds(57, 105, 242, 211);
+            for (int i = 1; i < 4; ++i)
+            {
+                const int x = 16 + (i - 1) * 108;
+                controls[i]->label.setBounds(x, 372, 108, 19);
+                controls[i]->slider.setBounds(x + 10, 392, 88, 79);
+            }
+            return;
+        }
         const int columns = effect == 0 || effect == 2 ? 3 : 4;
         const int top = effect == 3 ? 254 : hasReduction ? 174 : 153;
         const int width = (getWidth() - 48) / columns;
@@ -207,6 +294,28 @@ private:
         control->label.setColour(juce::Label::textColourId, juce::Colour(muted));
         addAndMakeVisible(control->label);
         controls.push_back(std::move(control));
+    }
+
+    void paintDrive(juce::Graphics& g)
+    {
+        g.setGradientFill({juce::Colour(0xff33292e), 0, 0,
+                           juce::Colour(0xff141319), 0, 355, false});
+        g.fillAll();
+        g.setColour(juce::Colour(0xff564247));
+        g.drawRoundedRectangle(9, 9, 338, 464, 13, 1);
+        g.setColour(juce::Colour(accent));
+        g.fillRoundedRectangle(28, 31, 4, 37, 2);
+        g.setFont(juce::FontOptions(13.0f, juce::Font::bold));
+        g.drawText("SonmooKit", 43, 24, 240, 21, juce::Justification::centredLeft);
+        g.setColour(juce::Colour(ink));
+        g.setFont(juce::FontOptions(31.0f, juce::Font::bold));
+        g.drawText("DriveTone", 43, 41, 260, 38, juce::Justification::centredLeft);
+        g.setColour(juce::Colour(0xff211c23));
+        g.fillRoundedRectangle(20, 320, 316, 42, 7);
+        meter(g, 328, "IN", shownInput, false);
+        meter(g, 347, "OUT", shownOutput, false);
+        g.setColour(juce::Colour(0xff564247));
+        g.drawHorizontalLine(367, 23.0f, 333.0f);
     }
 
     void addToggle(juce::ToggleButton& button, std::unique_ptr<State::ButtonAttachment>& attachment,
@@ -277,6 +386,8 @@ private:
             historyIndex = (historyIndex + 1) % history.size();
             repaint(24, 83, getWidth() - 48, 160);
         }
+        else if constexpr (effect == 4)
+            repaint(20, 320, 316, 42);
         else
             repaint(24, 83, getWidth() - 48, meterHeight());
     }
