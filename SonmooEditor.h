@@ -63,8 +63,8 @@ public:
             dial("time", "Time", " ms");
             dial("feedback", "Feedback", " %");
             dial("mix", "Mix", " %");
-            dial("lowcut", "Low Cut", " Hz");
-            dial("highcut", "High Cut", " Hz");
+            dial("lowcut", "Low Cut", " Hz", 0);
+            dial("highcut", "High Cut", " Hz", 0);
             const auto* sync = static_cast<juce::AudioParameterChoice*>(state.getParameter("sync"));
             division.addItemList(sync->choices, 1);
             division.setTooltip("Sync delay time to project tempo");
@@ -154,7 +154,7 @@ private:
         ~Control() { slider.setLookAndFeel(nullptr); }
     };
 
-    void dial(const char* id, const char* name, const char* suffix)
+    void dial(const char* id, const char* name, const char* suffix, int decimals = 1)
     {
         auto control = std::make_unique<Control>();
         auto& slider = control->slider;
@@ -164,7 +164,6 @@ private:
         slider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 86, 20);
         addAndMakeVisible(slider);
         control->attachment = std::make_unique<State::SliderAttachment>(state, id, slider);
-        const int decimals = displayPrecision(id);
         slider.textFromValueFunction = [decimals, unit = juce::String(suffix)] (double value)
         {
             return juce::String(value, decimals) + unit;
@@ -179,11 +178,6 @@ private:
         control->label.setColour(juce::Label::textColourId, juce::Colour(muted));
         addAndMakeVisible(control->label);
         controls.push_back(std::move(control));
-    }
-
-    static int displayPrecision(juce::StringRef id)
-    {
-        return id == "lowcut" || id == "highcut" ? 0 : 1;
     }
 
     static constexpr int meterHeight() { return effect == 0 ? 57 : 78; }
