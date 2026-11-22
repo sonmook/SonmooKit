@@ -50,7 +50,7 @@ public:
         spectrum.fill(-100);
         setSize(936, 710);
         display.listening.store(true);
-        startTimerHz(24);
+        startTimerHz(60);
     }
     ~DynamicEditor() override
     {
@@ -68,7 +68,7 @@ public:
         text(g, "PulseEQ", 24, 28, 255, 35, 30, ink);
         g.setColour(juce::Colour(0xff101a2a));
         g.fillRoundedRectangle(20, 75, 896, 286, 10);
-        graphContent(g);
+        if (g.clipRegionIntersects({20, 75, 896, 286})) graphContent(g);
         g.setColour(juce::Colour(0xff1c293f));
         g.fillRoundedRectangle(20, 373, 896, 97, 10);
         g.fillRoundedRectangle(20, 471, 896, 224, 10);
@@ -205,6 +205,17 @@ private:
             text(g, juce::String(db), 29, y - 8, 24, 15);
         }
         const double sr = display.sampleRate.load(std::memory_order_relaxed);
+        if (sr != graphRate)
+        {
+            graphRate = sr;
+            for (size_t i = 0; i < plotBins.size(); ++i)
+            {
+                const float hz = frequency(float(i) / float(plotBins.size() - 1));
+                const auto phase = std::polar(1., -2 * pi * std::min(double(hz), sr * .499) / sr);
+                const double bin = std::clamp(hz * fftSize / sr, 1., double(fftSize / 2));
+                plotBins[i] = {phase, phase * phase, int(bin), float(bin - int(bin))};
+            }
+        }
         std::array<Biquad, dynamicBands + 2> baseline{}, live{};
         bool hasSide = false;
         for (int i = 0; i < dynamicBands; ++i)
@@ -226,22 +237,26 @@ private:
                     filter(sr, dynamicValue(state, i == 0 ? "hpFreq" : "lpFreq"), 0, .7071, i == 0 ? 4 : 3);
         }
         juce::Path staticCurve, dynamicCurve, spectrumCurve;
-        for (int i = 0; i <= 320; ++i)
+        for (size_t i = 0; i < plotBins.size(); ++i)
         {
-            const float t = float(i) / 320;
-            const float hz = frequency(t), x = plot.getX() + t * plot.getWidth();
-            const auto z = std::polar(1., -2 * pi * std::min(double(hz), sr * .499) / sr);
-            const auto z2 = z * z;
+            const auto& point = plotBins[i];
+            const float t = float(i) / float(plotBins.size() - 1);
+            const float x = plot.getX() + t * plot.getWidth();
             const auto magnitude = [&] (const auto& filters)
             {
-                double sum = 0;
+                double product = 1;
                 for (const auto& f : filters)
-                    sum += 20 * std::log10(std::max(1e-10, std::abs(
-                        (f.b0 + f.b1 * z + f.b2 * z2) / (1. + f.a1 * z + f.a2 * z2))));
-                return float(sum);
+                {
+                    if (f.b0 == 1 && f.b1 == f.a1 && f.b2 == f.a2) continue;
+                    product *= std::norm(f.b0 + f.b1 * point.z + f.b2 * point.z2) /
+                               std::norm(1. + f.a1 * point.z + f.a2 * point.z2);
+                }
+                return float(10 * std::log10(std::max(1e-20, product)));
             };
-            const int bin = std::clamp(juce::roundToInt(hz * fftSize / sr), 1, fftSize / 2);
-            const float sy = plot.getBottom() - plot.getHeight() * unit((spectrum[bin] + 100) / 100);
+            const float first = spectrum[point.bin];
+            const float next = spectrum[std::min(point.bin + 1, fftSize / 2)];
+            const float level = first + point.fraction * (next - first);
+            const float sy = plot.getBottom() - plot.getHeight() * unit((level + 100) / 100);
             const auto add = [i, x] (juce::Path& path, float y)
             {
                 if (i == 0) path.startNewSubPath(x, y); else path.lineTo(x, y);
@@ -291,6 +306,10 @@ private:
     {
         for (int ch = 0; ch < 2; ++ch)
             peaks[ch] = std::max(peaks[ch] * .84f, display.channelPeak[ch].exchange(0, std::memory_order_relaxed));
+        const double now = juce::Time::getMillisecondCounterHiRes();
+        const float fall = float(std::clamp(now - lastFrameTime, 0., 100.) * .043);
+        lastFrameTime = now;
+        for (auto& bin : spectrum) bin = std::max(-100.f, bin - fall);
         if (display.ready.load(std::memory_order_acquire))
         {
             std::copy(display.frame.begin(), display.frame.end(), fftData.begin());
@@ -299,9 +318,10 @@ private:
             window.multiplyWithWindowingTable(fftData.data(), fftSize);
             fft.performFrequencyOnlyForwardTransform(fftData.data(), true);
             for (size_t i = 0; i < spectrum.size(); ++i)
-                spectrum[i] = std::max(spectrum[i] - 2, juce::Decibels::gainToDecibels(fftData[i] * 4 / fftSize, -100.f));
+                spectrum[i] = std::max(spectrum[i], juce::Decibels::gainToDecibels(fftData[i] * 4 / fftSize, -100.f));
         }
-        repaint();
+        repaint(20, 75, 896, 286);
+        repaint(300, 478, 316, 25);
     }
 
     State& state;
@@ -323,4 +343,7 @@ private:
     juce::dsp::WindowingFunction<float> window{fftSize, juce::dsp::WindowingFunction<float>::hann, false};
     std::array<float, fftSize * 2> fftData{};
     std::array<float, fftSize / 2 + 1> spectrum{};
+    struct PlotBin { std::complex<double> z, z2; int bin; float fraction; };
+    std::array<PlotBin, 321> plotBins{};
+    double graphRate = 0, lastFrameTime = 0;
 };

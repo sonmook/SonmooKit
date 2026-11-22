@@ -13,6 +13,10 @@ Projeto C++ com JUCE 8.0.6. Gera oito efeitos VST3 x64 independentes, com interf
 | VoiceStack | Doubler | Quatro vozes com ganho, pan, delay, detune, feedback, oitava e modulação por voz |
 | PulseEQ | F6 | Seis bandas dinâmicas, cortes, analisador e sidechain por banda |
 
+## PulseEQ 0.6.1
+
+O analisador atualiza a interface a até 60 Hz e usa janelas FFT de 4096 amostras sobrepostas. O traço decai suavemente entre quadros.
+
 ## PulseEQ 0.6.0
 
 Oito filtros incluem seis bandas dinâmicas e dois cortes globais. Cada banda tem ganho estático, range dinâmico, limiar, ataque e release, com Stereo/Mid/Side e detector Split/Wide. O sidechain externo usa o bus auxiliar VST3. O espectro mostra a saída e o gráfico compara a curva estática com a curva dinâmica. A resposta do processamento é própria.

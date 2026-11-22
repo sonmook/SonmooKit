@@ -61,6 +61,31 @@ struct DynamicDisplay : DisplayData
     std::array<std::atomic<float>, dynamicBands> activity{}, detector{};
     std::atomic<int> listenBand{-1};
     std::atomic<bool> stereo{true}, externalAvailable{false};
+
+    void push(float sample)
+    {
+        if (!listening.load(std::memory_order_relaxed))
+        {
+            filled = write = hop = 0;
+            return;
+        }
+        history[write] = sample;
+        write = (write + 1) % fftSize;
+        if (filled < fftSize) ++filled;
+        if (++hop < 512) return;
+        hop = 0;
+        if (filled != fftSize || ready.load(std::memory_order_acquire)) return;
+
+        // The editor owns frame until it clears ready. Keep collecting input meanwhile.
+        const auto split = history.begin() + write;
+        const auto end = std::copy(split, history.end(), frame.begin());
+        std::copy(history.begin(), split, end);
+        ready.store(true, std::memory_order_release);
+    }
+
+private:
+    std::array<float, fftSize> history{};
+    int write = 0, filled = 0, hop = 0;
 };
 
 struct BiquadMemory
