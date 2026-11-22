@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(SonmooKit VERSION 0.6.2 LANGUAGES C CXX)
+project(SonmooKit VERSION 0.7.0 LANGUAGES C CXX)
 include(FetchContent)
 FetchContent_Declare(JUCE GIT_REPOSITORY https://github.com/juce-framework/JUCE.git
     GIT_TAG 8.0.6 GIT_SHALLOW TRUE)
@@ -13,7 +13,7 @@ function(add_effect target code kind category)
         FORMATS VST3
         VST3_CATEGORIES Fx ${category}
         COPY_PLUGIN_AFTER_BUILD FALSE)
-    if(kind GREATER_EQUAL 5)
+    if(kind GREATER_EQUAL 5 AND kind LESS_EQUAL 7)
         target_sources(${target} PRIVATE Advanced.cpp)
         target_link_libraries(${target} PRIVATE juce::juce_dsp)
     else()
@@ -32,3 +32,4 @@ add_effect(DriveTone Drtn 4 Distortion)
 add_effect(CurveTen Crtn 5 EQ)
 add_effect(VoiceStack Vstk 6 Delay)
 add_effect(PulseEQ Plsq 7 EQ)
+add_effect(FETStrike Ftst 8 Dynamics)

@@ -13,6 +13,11 @@ using State = juce::AudioProcessorValueTreeState;
 
 }
 #include "SonmooEditor.h"
+#if EFFECT_KIND == 8
+namespace {
+#include "FetEditor.h"
+}
+#endif
 namespace {
 
 State::ParameterLayout makeLayout()
@@ -63,12 +68,31 @@ State::ParameterLayout makeLayout()
         layout.add(std::make_unique<juce::AudioParameterBool>(
             juce::ParameterID{"lookahead", 1}, "12 ms Lookahead", false));
     }
-    else
+    else if constexpr (effect == 4)
     {
         add("drive", "Drive", 0, 10, 0);
         add("tone", "Tone (%)", -100, 100, 0);
         add("trim", "Output Trim (dB)", -24, 12, 0);
         add("mix", "Mix (%)", 0, 100, 100);
+    }
+    else
+    {
+        add("input", "Input (dB)", -48, 24, 0);
+        add("output", "Output (dB)", -48, 24, 0);
+        add("attack", "Attack", 1, 7, 3);
+        add("release", "Release", 1, 7, 4);
+        add("mix", "Mix (%)", 0, 100, 100);
+        add("trim", "Trim (dB)", -18, 18, 0);
+        const auto choice = [&] (const char* key, const char* label, juce::StringArray items)
+        {
+            layout.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{key, 1}, label, items, 0));
+        };
+        choice("ratio", "Ratio", {"4:1", "8:1", "12:1", "20:1", "All"});
+        choice("meter", "Meter", {"Gain Reduction", "Input", "Output"});
+        choice("analog", "Analog Hum", {"Off", "50 Hz", "60 Hz"});
+        choice("character", "Character", {"Smooth", "Bright"});
+        layout.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{"makeup", 1}, "Auto Makeup", false));
+        layout.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{"bypassComp", 1}, "Compression Off", false));
     }
     return layout;
 }
@@ -91,7 +115,11 @@ public:
     bool hasEditor() const override { return true; }
     juce::AudioProcessorEditor* createEditor() override
     {
+#if EFFECT_KIND == 8
+        return new FetEditor(*this, state, activity);
+#else
         return new SonmooEditor(*this, state, activity);
+#endif
     }
     int getNumPrograms() override { return 1; }
     int getCurrentProgram() override { return 0; }
@@ -132,6 +160,7 @@ public:
         cursor = hold = 0;
         reductionDb = detectionEnvelope = driveBlend = 0;
         limiterGain = 1;
+        humPhase = 0;
         delay = 0;
         lowpass = {};
         bass = {};
@@ -151,6 +180,7 @@ public:
         if constexpr (effect == 2) limit(audio);
         if constexpr (effect == 3) deEss(audio);
         if constexpr (effect == 4) driveTone(audio);
+        if constexpr (effect == 8) fetCompress(audio);
         updatePeak(activity.output, signalPeak(audio));
         updatePeak(activity.reduction, blockReduction);
     }
@@ -397,6 +427,64 @@ private:
         }
     }
 
+    void fetCompress(juce::AudioBuffer<float>& audio)
+    {
+        const auto gain = [] (float db) { return juce::Decibels::decibelsToGain(db); };
+        const float driveDb = param("input");
+        const float drive = gain(driveDb), output = gain(param("output")), trim = gain(param("trim"));
+        const float mix = param("mix") * .01f;
+        constexpr std::array<float, 5> ratios{4, 8, 12, 20, 22};
+        const int mode = std::clamp(int(param("ratio")), 0, 4);
+        const bool all = mode == 4;
+        const bool bright = param("character") > .5f;
+        const bool off = param("bypassComp") > .5f;
+        const float threshold = all ? -23.f : -18.f + .55f * mode;
+        const float slope = 1 - 1 / ratios[mode];
+        const float attackMs = .8f * std::pow(.025f, (param("attack") - 1) / 6);
+        const float releaseMs = 1100.f * std::pow(50.f / 1100.f, (param("release") - 1) / 6);
+        const float attack = decay(attackMs);
+        const float release = decay(releaseMs);
+        const float slow = decay(releaseMs * 2.8f);
+        const float knee = all ? 8.f : bright ? 2.5f : 4.f;
+        const float makeup = param("makeup") > .5f && !off
+            ? gain(std::max(0.f, (-12 + driveDb - threshold) * slope) * .65f) : 1.f;
+        const float saturation = all ? 1.2f : bright ? .56f : .34f;
+        const int analog = int(param("analog"));
+        const float step = float((analog == 1 ? 50 : 60) / rate);
+        const float humLevel = analog == 0 ? 0.f : gain(-77.f);
+        auto samples = audio.getArrayOfWritePointers();
+        const int channels = audio.getNumChannels();
+        for (int i = 0; i < audio.getNumSamples(); ++i)
+        {
+            float peak = 0;
+            for (int ch = 0; ch < channels; ++ch)
+                peak = std::max(peak, std::abs(samples[ch][i] * drive));
+            const float over = juce::Decibels::gainToDecibels(peak, -120.f) - threshold;
+            float target = slope * std::max(0.f, over);
+            if (std::abs(over) < knee * .5f)
+            {
+                const float x = over + .5f * knee;
+                target = slope * x * x / (2 * knee);
+            }
+            if (off) target = 0;
+            const float recovery = release + (slow - release) * std::min(reductionDb / 20, 1.f);
+            const float c = target > reductionDb ? attack : recovery;
+            reductionDb = target + c * (reductionDb - target);
+            const float attenuation = off ? 1.f : gain(-reductionDb);
+            if (!off) blockReduction = std::max(blockReduction, reductionDb);
+            const float hum = humLevel == 0 ? 0 : humLevel * std::sin(juce::MathConstants<float>::twoPi * humPhase);
+            humPhase += step;
+            if (humPhase >= 1) humPhase -= 1;
+            for (int ch = 0; ch < channels; ++ch)
+            {
+                const float dry = samples[ch][i];
+                const float compressed = dry * drive * attenuation;
+                const float wet = (std::tanh(compressed * saturation) / saturation + hum) * makeup * output;
+                samples[ch][i] = trim * (dry + mix * (wet - dry));
+            }
+        }
+    }
+
     State state;
     Activity activity;
     float blockReduction = 0, detectionEnvelope = 0, driveBlend = 0;
@@ -405,7 +493,7 @@ private:
     std::array<float, 2> lowpass{}, bass{};
     double rate = 44100, delay = 0;
     int lookahead = 0, cursor = 0, hold = 0;
-    float reductionDb = 0, limiterGain = 1;
+    float reductionDb = 0, limiterGain = 1, humPhase = 0;
 };
 }
 
