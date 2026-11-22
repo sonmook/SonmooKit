@@ -9,7 +9,6 @@ Projeto C++ com JUCE 8.0.6. Gera sete efeitos VST3 x64 independentes, com interf
 | SibilanceControl | Sibilance | Limiar, faixa de redução, largura da detecção, transição Wide/Split, audição do sinal removido, lookahead de 12 ms e histórico do detector |
 | DriveTone | OneKnob Driver | Drive de 0 a 10, tonalidade, ajuste de saída e mix |
 | PeakCeiling | L1 | Threshold, teto de pico de amostra em dBFS, release e lookahead fixo de 2 ms com latência reportada ao host |
-
 | CurveTen | Q10 | Dez bandas, seis tipos de filtro, curva arrastável, espectro de saída e ganho global |
 | VoiceStack | Doubler | Quatro vozes com ganho, pan, delay, detune, feedback, oitava e modulação por voz |
 
