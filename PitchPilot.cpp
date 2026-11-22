@@ -62,7 +62,7 @@ public:
         static constexpr int masks[]{4095,2741,1453,2477,661,1193};
         return (masks[(int)value(Scale)] & (1<<((key-(int)value(Root)+12)%12)))!=0;
     }
-    const String getName() const override {return "PitchPilot";}
+    const String getName() const override {return JucePlugin_Name;}
     bool acceptsMidi() const override {return true;}
     bool producesMidi() const override {return false;}
     double getTailLengthSeconds() const override {return 0.05;}

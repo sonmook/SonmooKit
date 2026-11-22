@@ -13,9 +13,11 @@ Projeto C++ com JUCE 8.0.6. Gera dez efeitos VST3 x64 independentes, com interfa
 | VoiceStack | Doubler | Quatro vozes com ganho, pan, delay, detune, feedback, oitava e modulação por voz |
 | PulseEQ | F6 | Seis bandas dinâmicas, cortes, analisador e sidechain por banda |
 | FETStrike | CLA-76 | Compressor FET com Input, Output, tempos, quatro ratios, All e medidor de agulha |
-| PitchPilot | Waves Tune Real-Time | Correção vocal por escala ou MIDI, tolerância, transições, vibrato, referência e teclado interativo |
+| SonmooTune | Waves Tune Real-Time | Correção vocal por escala ou MIDI, tolerância, transições, vibrato, referência e teclado interativo |
 
-## PitchPilot 0.8.0
+## SonmooTune 0.8.1
+
+O afinador anteriormente chamado PitchPilot passa a aparecer como SonmooTune. O alvo de compilação continua sendo `PitchPilot_VST3`.
 
 Afinador de voz monofônica com entrada mono ou estéreo. Escolha a extensão vocal, a tônica e a escala. **Speed** ajusta a velocidade da correção e **Transition** suaviza mudanças de nota-alvo. **Tolerance** exige uma margem em cents e um tempo mínimo antes da troca. **Link times** usa o tempo de Speed para as transições. O visor mostra a nota de entrada e seu desvio em relação ao alvo. No teclado, verde indica o alvo e o ponto coral indica a entrada.
 

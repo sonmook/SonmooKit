@@ -134,7 +134,7 @@ public:
         auto label=[&](String s,int x,int y,int w,int h,float size,Colour c,Justification align=Justification::centred)
         {g.setColour(c);g.setFont(FontOptions(size,Font::bold));g.drawText(s,x,y,w,h,align);};
         g.fillAll(Colour(0xff1a2428));SonmooBrand::draw(g,21,8,24);
-        label("PitchPilot",157,5,150,29,23,Colours::white,Justification::centredLeft);
+        label("SonmooTune",157,5,150,29,23,Colours::white,Justification::centredLeft);
         label("VOCAL PITCH CORRECTION",676,9,260,20,13,muted,Justification::centredRight);
         ColourGradient face(Colour(0xffe0e1d9),0,43,silver,0,294,false);face.addColour(.56,Colour(0xffa7afad));
         g.setGradientFill(face);g.fillRoundedRectangle(16,44,928,249,7);
