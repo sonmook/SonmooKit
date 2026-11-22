@@ -89,6 +89,14 @@ State::ParameterLayout layout()
     if constexpr (!isEqualiser)
     {
         toggle("direct", "Direct Signal", true);
+        toggle("align", "Align Direct", false);
+        toggle("lowRange", "Extended Pitch Range", false);
+        toggle("lowShelfOn", "Low Shelf Enabled", true);
+        toggle("highShelfOn", "High Shelf Enabled", true);
+        add("lowShelfGain", "Low Shelf Gain", -24, 12, .1f, 0);
+        add("lowShelfFreq", "Low Shelf Frequency", 16, 21357, 1, 101, 1000);
+        add("highShelfGain", "High Shelf Gain", -24, 12, .1f, 0);
+        add("highShelfFreq", "High Shelf Frequency", 16, 21357, 1, 1306, 1000);
         add("directGain", "Direct Gain", -48, 0, .1f, 0);
         add("directPan", "Direct Pan", -45, 45, 1, 0);
         add("fbCut", "Feedback High Pass", 16, 4000, 1, 80, 250);
@@ -165,7 +173,7 @@ struct Voice
 struct DisplayData
 {
     std::array<float, fftSize> frame{};
-    std::atomic<bool> ready{false}, listening{false};
+    std::atomic<bool> ready{false}, listening{false}, resetModulation{false};
     std::atomic<double> sampleRate{48000};
     std::atomic<float> peak{0};
     int received = 0;
@@ -181,6 +189,8 @@ struct DisplayData
         }
     }
 };
+
+#include "VoiceEditor.h"
 
 class Editor final : public juce::AudioProcessorEditor, private juce::Timer
 {
@@ -560,6 +570,11 @@ public:
             feedbackCut = state.getRawParameterValue("fbCut");
             lowCut = state.getRawParameterValue("wetLow");
             highCut = state.getRawParameterValue("wetHigh");
+            align = state.getRawParameterValue("align");
+            lowRange = state.getRawParameterValue("lowRange");
+            shelfOn = {state.getRawParameterValue("lowShelfOn"), state.getRawParameterValue("highShelfOn")};
+            shelfGain = {state.getRawParameterValue("lowShelfGain"), state.getRawParameterValue("highShelfGain")};
+            shelfFreq = {state.getRawParameterValue("lowShelfFreq"), state.getRawParameterValue("highShelfFreq")};
         }
     }
 
@@ -568,7 +583,11 @@ public:
     bool producesMidi() const override { return false; }
     double getTailLengthSeconds() const override { return isEqualiser ? 0.25 : 32.0; }
     bool hasEditor() const override { return true; }
-    juce::AudioProcessorEditor* createEditor() override { return new Editor(*this, state, display); }
+    juce::AudioProcessorEditor* createEditor() override
+    {
+        if constexpr (isEqualiser) return new Editor(*this, state, display);
+        return new VoiceEditor(*this, state, display);
+    }
     int getNumPrograms() override { return 1; }
     int getCurrentProgram() override { return 0; }
     void setCurrentProgram(int) override {}
@@ -588,13 +607,20 @@ public:
         sampleRate = rate;
         display.sampleRate.store(rate, std::memory_order_relaxed);
         if constexpr (!isEqualiser)
-            for (auto& v : voices) v.samples.resize(size_t(rate * .19) + 4);
+        {
+            const auto length = size_t(rate * .20) + 4;
+            for (auto& v : voices) v.samples.resize(length);
+            for (auto& channel : directLine) channel.resize(length);
+        }
         reset();
     }
     void releaseResources() override {}
     void reset() override
     {
         memory = {};
+        shelfMemory = {};
+        for (auto& channel : directLine)
+            std::fill(channel.begin(), channel.end(), 0);
         cursor = 0;
         for (auto& v : voices)
         {
@@ -687,7 +713,28 @@ private:
         if (voices[0].samples.empty()) return;
         const int length = int(voices[0].samples.size());
         const int inputs = getMainBusNumInputChannels(), outputs = getMainBusNumOutputChannels();
-        const double grain = sampleRate * .04;
+        const bool extended = P::get(lowRange) > .5f;
+        const double grain = sampleRate * (extended ? .08 : .04);
+        const int dryDelay = P::get(align) > .5f ? juce::roundToInt(grain * .5) : 0;
+        if (display.resetModulation.exchange(false, std::memory_order_acq_rel))
+            for (auto& v : voices) v.lfoPhase = 0;
+        std::array<Biquad, 2> shelves{};
+        for (int i = 0; i < 2; ++i)
+            if (P::get(shelfOn[i]) > .5f)
+                shelves[i] = filter(sampleRate, P::get(shelfFreq[i]), P::get(shelfGain[i]), 1, i + 1);
+        const auto applyShelves = [&] (double input, int ch)
+        {
+            for (int i = 0; i < 2; ++i)
+            {
+                auto& z = shelfMemory[ch][i];
+                const auto& b = shelves[i];
+                const double next = b.b0 * input + z[0];
+                z[0] = b.b1 * input - b.a1 * next + z[1];
+                z[1] = b.b2 * input - b.a2 * next;
+                input = next;
+            }
+            return float(input);
+        };
         const float master = juce::Decibels::decibelsToGain(P::get(output));
         const float dry = P::get(directEnable) > .5f ? juce::Decibels::decibelsToGain(P::get(directGain)) : 0;
         const float pan = P::get(directPan) / 45;
@@ -712,8 +759,12 @@ private:
             const float right = inputs > 1 ? channels[1][n] : left;
             const float mono = (left + right) * .5f;
             const float dryPan = outputs == 1 ? 0.0f : pan;
-            float outL = dry * left * (1 - std::max(dryPan, 0.0f));
-            float outR = dry * right * (1 + std::min(dryPan, 0.0f));
+            directLine[0][cursor] = left;
+            directLine[1][cursor] = right;
+            const int dryRead = (cursor - dryDelay + length) % length;
+            const float directLeft = directLine[0][dryRead] * dry * (1 - std::max(dryPan, 0.f));
+            const float directRight = directLine[1][dryRead] * dry * (1 + std::min(dryPan, 0.f));
+            float outL = 0, outR = 0;
             float monoWet = 0;
             for (int i = 0; i < count; ++i)
             {
@@ -722,7 +773,7 @@ private:
                 v.samples[cursor] = mono + v.feedback * s.feedback;
                 float tap;
                 if (std::abs(s.semitones) + std::abs(s.depth) < 1e-5)
-                    tap = delayTap(v, s.delay);
+                    tap = delayTap(v, s.delay + dryDelay);
                 else
                 {
                     const double ratio = std::exp2((s.semitones + s.depth * std::sin(2 * pi * v.lfoPhase)) / 12);
@@ -743,8 +794,8 @@ private:
                 outR += v.wetHigh * s.right;
                 monoWet += v.wetHigh * std::hypot(s.left, s.right);
             }
-            channels[0][n] = master * (outputs == 1 ? dry * mono + monoWet : outL);
-            if (outputs > 1) channels[1][n] = master * outR;
+            channels[0][n] = master * (directLeft + applyShelves(outputs == 1 ? monoWet : outL, 0));
+            if (outputs > 1) channels[1][n] = master * (directRight + applyShelves(outR, 1));
             cursor = (cursor + 1) % length;
         }
     }
@@ -760,6 +811,11 @@ private:
     std::atomic<float>* feedbackCut{};
     std::atomic<float>* lowCut{};
     std::atomic<float>* highCut{};
+    std::atomic<float>* align{};
+    std::atomic<float>* lowRange{};
+    std::array<std::atomic<float>*, 2> shelfOn{}, shelfGain{}, shelfFreq{};
+    std::array<std::vector<float>, 2> directLine;
+    std::array<std::array<std::array<double, 2>, 2>, 2> shelfMemory{};
     std::array<std::array<std::array<double, 2>, count>, 2> memory{};
     std::array<Voice, count> voices;
     double sampleRate = 48000;
