@@ -50,9 +50,7 @@ public:
     {
         g.setGradientFill({juce::Colour(0xff252135), 0, 0, juce::Colour(0xff0e1721), 0, 600, false});
         g.fillAll();
-        g.setColour(juce::Colour(0xffd5b9fa));
-        g.setFont(juce::FontOptions(13.f, juce::Font::bold));
-        g.drawText("SonmooKit", 24, 12, 185, 19, juce::Justification::centredLeft);
+        SonmooBrand::draw(g, 24, 9, 22);
         g.setColour(ink);
         g.setFont(juce::FontOptions(29.f, juce::Font::bold));
         g.drawText("VoiceStack", 23, 29, 300, 37, juce::Justification::centredLeft);

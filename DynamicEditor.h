@@ -64,7 +64,7 @@ public:
     {
         g.setGradientFill({juce::Colour(0xff233351), 0, 0, juce::Colour(0xff101727), 0, 710, false});
         g.fillAll();
-        text(g, "SONMOOKIT", 25, 12, 140, 17, 11, colours[0]);
+        SonmooBrand::draw(g, 24, 8, 22);
         text(g, "PulseEQ", 24, 28, 255, 35, 30, ink);
         g.setColour(juce::Colour(0xff101a2a));
         g.fillRoundedRectangle(20, 75, 896, 286, 10);

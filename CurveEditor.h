@@ -68,7 +68,7 @@ public:
     {
         g.setGradientFill({juce::Colour(0xff182e3a), 0, 0, juce::Colour(0xff101820), 0, 708, false});
         g.fillAll();
-        caption(g, "SONMOOKIT", 24, 11, 160, 18, 12, colours[0]);
+        SonmooBrand::draw(g, 24, 8, 22);
         caption(g, "CurveTen", 24, 27, 340, 40, 31, ink);
         g.setColour(juce::Colour(0xff0b151c));
         g.fillRoundedRectangle(18, 75, 1004, 245, 9);

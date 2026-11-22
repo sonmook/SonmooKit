@@ -305,9 +305,7 @@ private:
         g.setGradientFill({juce::Colour(panel).interpolatedWith(juce::Colour(accent), .08f),
                            0, 0, juce::Colour(background), 0, float(getHeight()), false});
         g.fillAll();
-        g.setColour(juce::Colour(accent));
-        g.setFont(juce::FontOptions(13.0f, juce::Font::bold));
-        g.drawText("SonmooKit", 24, 15, 180, 20, juce::Justification::centredLeft);
+        SonmooBrand::draw(g, 24, 12, 22);
         g.setColour(juce::Colour(ink));
         g.setFont(juce::FontOptions(30.0f, juce::Font::bold));
         g.drawText(getAudioProcessor()->getName(), 24, 33, 390, 36, juce::Justification::centredLeft);
@@ -384,8 +382,7 @@ private:
         g.drawRoundedRectangle(9, 9, 338, 464, 13, 1);
         g.setColour(juce::Colour(accent));
         g.fillRoundedRectangle(28, 31, 4, 37, 2);
-        g.setFont(juce::FontOptions(13.0f, juce::Font::bold));
-        g.drawText("SonmooKit", 43, 24, 240, 21, juce::Justification::centredLeft);
+        SonmooBrand::draw(g, 43, 20, 23);
         g.setColour(juce::Colour(ink));
         g.setFont(juce::FontOptions(31.0f, juce::Font::bold));
         g.drawText("DriveTone", 43, 41, 260, 38, juce::Justification::centredLeft);

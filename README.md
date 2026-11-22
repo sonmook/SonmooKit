@@ -13,6 +13,10 @@ Projeto C++ com JUCE 8.0.6. Gera oito efeitos VST3 x64 independentes, com interf
 | VoiceStack | Doubler | Quatro vozes com ganho, pan, delay, detune, feedback, oitava e modulação por voz |
 | PulseEQ | F6 | Seis bandas dinâmicas, cortes, analisador e sidechain por banda |
 
+## Versão 0.6.2
+
+Os oito plugins usam a logo SonmooKit nos cabeçalhos, com uma marca vetorial compartilhada.
+
 ## PulseEQ 0.6.1
 
 O analisador atualiza a interface a até 60 Hz e usa janelas FFT de 4096 amostras sobrepostas. O traço decai suavemente entre quadros.
