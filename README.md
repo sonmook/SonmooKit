@@ -1,6 +1,6 @@
 # SonmooKit para FL Studio
 
-Projeto C++ com JUCE 8.0.6. Gera cinco efeitos VST3 x64 independentes, com interface própria, medidores em tempo real, parâmetros automatizáveis e restauração de estado no projeto.
+Projeto C++ com JUCE 8.0.6. Gera sete efeitos VST3 x64 independentes, com interface própria, medidores em tempo real, parâmetros automatizáveis e restauração de estado no projeto.
 
 | Efeito | Referência funcional | Controles |
 | --- | --- | --- |
@@ -9,6 +9,13 @@ Projeto C++ com JUCE 8.0.6. Gera cinco efeitos VST3 x64 independentes, com inter
 | SibilanceControl | Sibilance | Limiar, faixa de redução, largura da detecção, transição Wide/Split, audição do sinal removido, lookahead de 12 ms e histórico do detector |
 | DriveTone | OneKnob Driver | Drive de 0 a 10, tonalidade, ajuste de saída e mix |
 | PeakCeiling | L1 | Threshold, teto de pico de amostra em dBFS, release e lookahead fixo de 2 ms com latência reportada ao host |
+
+| CurveTen | Q10 | Dez bandas, seis tipos de filtro, curva arrastável, espectro de saída e ganho global |
+| VoiceStack | Doubler | Quatro vozes com ganho, pan, delay, detune, feedback, oitava e modulação por voz |
+
+## Versão 0.5.0
+
+CurveTen e VoiceStack são efeitos com algoritmos próprios. CurveTen aplica as mesmas bandas aos dois canais. VoiceStack aceita mono, estéreo e mono para estéreo; as vozes usam uma soma mono e o sinal direto preserva o estéreo.
 
 ## Interface 0.4.0
 
@@ -20,7 +27,7 @@ Requer Visual Studio 2022 com **Desktop development with C++**, Windows SDK, Git
 
 ```powershell
 cmake -S . -B build -G "Visual Studio 17 2022" -A x64
-cmake --build build --config Release --target StereoEcho_VST3 SoftCompressor_VST3 PeakCeiling_VST3 SibilanceControl_VST3 DriveTone_VST3
+cmake --build build --config Release --target StereoEcho_VST3 SoftCompressor_VST3 PeakCeiling_VST3 SibilanceControl_VST3 DriveTone_VST3 CurveTen_VST3 VoiceStack_VST3
 ```
 
 Os bundles completos ficam em `build/<Efeito>_artefacts/Release/VST3/`. Copie cada pasta `.vst3` inteira para `C:\Program Files\Common Files\VST3`. No FL Studio, abra **Options > Manage plugins**, ative **Verify plugins** e faça a busca. Carregue os efeitos em slots do Mixer. Consulte o [manual de instalação de plugins do FL Studio](https://www.image-line.com/fl-studio-learning/fl-studio-online-manual/html/basics_externalplugins.htm).
