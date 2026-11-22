@@ -138,9 +138,9 @@ public:
         label("VOCAL PITCH CORRECTION",676,9,260,20,13,muted,Justification::centredRight);
         ColourGradient face(Colour(0xffe0e1d9),0,43,silver,0,294,false);face.addColour(.56,Colour(0xffa7afad));
         g.setGradientFill(face);g.fillRoundedRectangle(16,44,928,249,7);
-        label("SPEED",32,65,100,23,16,ink);label("TRANSITION",273,65,125,23,16,ink);
+        label("SPEED",32,65,100,23,16,ink);label("TRANSITION (ms)",269,65,134,23,14,ink);
         label("TOLERANCE",146,104,127,20,13,ink);label("CENTS",146,125,65,16,11,ink);label("TIME (ms)",209,125,65,16,11,ink);
-        label("ms",32,231,100,15,11,ink);label("ms",280,231,113,15,11,ink);label("%",839,236,75,14,11,ink);
+        label("ms",32,231,100,15,11,ink);label("%",839,236,75,14,11,ink);
         label("TONE dB",314,235,72,17,10,ink);
         g.setColour(Colour(0xff0d1518));g.fillRoundedRectangle(405,54,390,228,8);
         const int detected=p.displayNote.load()<0?-1:roundToInt(p.displayNote.load());
