@@ -198,6 +198,9 @@ struct DisplayData
     }
 };
 
+#if EFFECT_KIND == 7
+#include "DynamicEQ.h"
+#else
 #include "VoiceEditor.h"
 
 #include "CurveEditor.h"
@@ -503,6 +506,7 @@ private:
     double sampleRate = 48000;
     int cursor = 0;
 };
+#endif
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() { return new Processor(); }

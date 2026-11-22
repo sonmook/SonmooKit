@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(SonmooKit VERSION 0.5.2 LANGUAGES C CXX)
+project(SonmooKit VERSION 0.6.0 LANGUAGES C CXX)
 include(FetchContent)
 FetchContent_Declare(JUCE GIT_REPOSITORY https://github.com/juce-framework/JUCE.git
     GIT_TAG 8.0.6 GIT_SHALLOW TRUE)
@@ -31,3 +31,4 @@ add_effect(SibilanceControl Sbct 3 Dynamics)
 add_effect(DriveTone Drtn 4 Distortion)
 add_effect(CurveTen Crtn 5 EQ)
 add_effect(VoiceStack Vstk 6 Delay)
+add_effect(PulseEQ Plsq 7 EQ)
