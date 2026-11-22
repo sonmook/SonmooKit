@@ -20,7 +20,7 @@ State::ParameterLayout layout()
     { p.add(std::make_unique<AudioParameterChoice>(ParameterID{id,1},name,values,initial)); };
     auto toggle = [&](const char* id,const char* name,bool initial)
     { p.add(std::make_unique<AudioParameterBool>(ParameterID{id,1},name,initial)); };
-    number("speed","Speed (ms)",0,800,1,15); number("transition","Note transition (ms)",0,800,1,120);
+    number("speed","Speed (ms)",0,800,.1f,15); number("transition","Note transition (ms)",0,800,.1f,120);
     number("cents","Tolerance (cents)",0,100,1,0); number("hold","Tolerance time (ms)",0,300,1,0);
     number("amount","Correction (%)",0,100,1,100); number("vibrato","Vibrato (%)",0,200,1,100);
     number("reference","Reference (Hz)",415,466,.1f,440);
@@ -33,6 +33,11 @@ State::ParameterLayout layout()
     number("toneLevel","Reference tone (dB)",-60,-6,.5f,-20);
     for(int n=24;n<84;++n)
         choice("note"+String(n),"Local override "+String(n),{"Inherit","Allow","Exclude"},0);
+    for(int i=0;i<72;++i)
+    {
+        const String label=i<12 ? roots[i] : "MIDI "+String(i+12);
+        choice("route"+String(i),label+" correction rule",{"Default","Pitch up","Pitch down","Bypass"},0);
+    }
     return p;
 }
 
@@ -49,9 +54,20 @@ public:
     std::atomic<float> displayNote{-1}, deviation{0}, inputLevel{0}, outputLevel{0};
     std::atomic<int> targetNote{-1}, audition{-1}, keyboardTarget{-1};
     float value(int i) const { return params[i]->load(std::memory_order_relaxed); }
-    enum { Group = FirstKey+12, VibratoOn, ToneLevel, FirstLocal };
+    enum { Group = FirstKey+12, VibratoOn, ToneLevel, FirstLocal, FirstRoute=FirstLocal+60 };
+    int route(int note) const
+    {
+        if(note>=24 && note<84 && value(Group)<.5f)
+        {
+            const int local=(int)value(FirstRoute+12+note-24);
+            if(local || value(FirstLocal+note-24)!=0) return local;
+        }
+        return (int)value(FirstRoute+note%12);
+    }
     bool allowed(int note) const
     {
+        const int mode=route(note);
+        if(mode!=0) return mode==3;
         if(note>=24 && note<84 && value(Group)<.5f)
         {
             const int local=(int)value(FirstLocal+note-24);
@@ -85,15 +101,15 @@ public:
     void prepareToPlay(double sr,int) override
     {
         rate=sr; stride=jmax(1,roundToInt(sr/6000)); detectorRate=sr/stride;
-        latency=roundToInt(sr*.045); setLatencySamples(latency);
-        delay.setSize(2,latency*4+8); delay.clear(); write=0;
+        setLatencySamples(0);
+        delay.setSize(2,roundToInt(sr*.16)+8); delay.clear(); write=0;
         window.fill(0); keys.fill(0); tick=decCount=hop=pos=0; average=lowpass=0;
         target=pending=-1; pendingMs=0; period=sr/220; phase=0; gain=0; ratio=1;
-        head=oldHead=latency; goal=1; voiced=false; validBefore=false; monitorGain=0; oscillator=0;
+        head=oldHead=period; goal=1; voiced=false; validBefore=false; monitorGain=0; oscillator=0;
         displayNote=-1; targetNote=-1; inputLevel=outputLevel=0;
     }
 private:
-    std::array<std::atomic<float>*,FirstLocal+60> params{};
+    std::array<std::atomic<float>*,FirstRoute+72> params{};
     std::array<float,512> window{};
     std::array<int64_t,128> keys{};
     AudioBuffer<float> delay;
@@ -101,7 +117,7 @@ private:
     double oscillator=0,slowNote=0,glide=0,pendingMs=0;
     bool voiced=false,validBefore=false;
     int64_t tick=0;
-    int stride=8,latency=2160,write=0,pos=0,hop=0,decCount=0,target=-1,pending=-1;
+    int stride=8,write=0,pos=0,hop=0,decCount=0,target=-1,pending=-1;
     float average=0,lowpass=0,gain=0,monitorGain=0;
     float detect()
     {
@@ -130,6 +146,33 @@ private:
         }
         return 0;
     }
+    double lastPitch=0, lastExtreme=0, halfCycleMs=0, vibratoConfidence=0;
+    int pitchDirection=0, regularTurns=0;
+    double vibratoOffset(double note,double dt)
+    {
+        if(!validBefore || std::abs(note-lastPitch)>1.25)
+        {
+            slowNote=lastExtreme=lastPitch=note;
+            halfCycleMs=vibratoConfidence=0;
+            pitchDirection=regularTurns=0;
+        }
+        halfCycleMs+=dt;
+        const double step=note-lastPitch;
+        const int direction=step>.008 ? 1 : step<-.008 ? -1 : 0;
+        if(direction && direction!=pitchDirection)
+        {
+            const double depth=std::abs(lastPitch-lastExtreme);
+            const bool regular=halfCycleMs>=38 && halfCycleMs<=175 && depth>.055 && depth<2.4;
+            regularTurns=regular ? jmin(4,regularTurns+1) : 0;
+            lastExtreme=lastPitch;halfCycleMs=0;pitchDirection=direction;
+        }
+        if(halfCycleMs>185) regularTurns=0;
+        const double blend=regularTurns>=2 ? 1. : 0.;
+        vibratoConfidence+=(blend-vibratoConfidence)*(1-std::exp(-dt/32.));
+        lastPitch=note;
+        slowNote+=(note-slowNote)*(1-std::exp(-dt/140.));
+        return value(VibratoOn)>.5f ? vibratoConfidence*(note-slowNote) : 0.;
+    }
     void analyse()
     {
         const float hz=detect();
@@ -137,6 +180,8 @@ private:
         if(!voiced){target=pending=-1; displayNote=-1;targetNote=-1;validBefore=false; goal=1;return;}
         period=rate/hz;
         const double note=69+12*std::log2(hz/value(Reference)), dt=48000/detectorRate;
+        const double modulation=vibratoOffset(note,dt);
+        const double centreNote=note-modulation;
         int candidate=keyboardTarget.load();
         if(candidate<0 && value(Midi)>.5f)
         {
@@ -147,27 +192,40 @@ private:
         if(!forced)
         {
             double best=1e8;
-            for(int n=jmax(0,(int)note-12);n<=jmin(127,(int)note+13);++n)
-                if(allowed(n) && std::abs(note-n)<best){candidate=n;best=std::abs(note-n);}
+            const int nearest=jlimit(0,127,roundToInt(centreNote));
+            const int direction=route(nearest);
+            const int start=direction==1 ? nearest+1 : 0;
+            const int end=direction==2 ? nearest-1 : 127;
+            for(int n=start;n<=end;++n)
+                if(std::abs(centreNote-n)<best && allowed(n)){candidate=n;best=std::abs(centreNote-n);}
         }
         displayNote=(float)note;
         if(candidate<0){targetNote=target=-1;voiced=validBefore=false;goal=1;return;}
+        const int previousTarget=target;
         if(candidate!=target)
         {
             if(candidate!=pending){pending=candidate;pendingMs=0;}
             pendingMs+=dt;
-            const bool beyond=std::abs(note-target)-std::abs(note-candidate)>=.02*value(Cents);
-            if(forced || target<0 || !allowed(target) || (beyond && pendingMs>=value(Hold))) target=candidate;
+            const bool beyond=std::abs(centreNote-target)-std::abs(centreNote-candidate)>=.02*value(Cents);
+            const bool centsOn=value(Cents)>0, timeOn=value(Hold)>0;
+            if(forced || target<0 || !allowed(target) || (!centsOn && !timeOn)
+               || (centsOn && beyond) || (timeOn && pendingMs>=value(Hold))) target=candidate;
         } else {pending=-1;pendingMs=0;}
-        if(!validBefore){slowNote=note;glide=target;}
-        slowNote+=(note-slowNote)*(1-std::exp(-dt/140));
+
         const double transition=value(Linked)>.5 ? value(Speed):value(Transition);
-        glide+=(target-glide)*(1-std::exp(-dt/jmax(.01,transition)));
+
         // Remove fast deviations at 0%, retain them at 100%, exaggerate at 200%.
         const double retainedVibrato=value(VibratoOn)>.5f ? value(Vibrato)*.01 : 0.;
-        double delta=glide-note+retainedVibrato*(note-slowNote);
+        const double desired=target-note+retainedVibrato*modulation;
+        // Smooth the change in correction interval. A correctly sung interval needs no pitch slide.
+        if(!validBefore) glide=0;
+        else if(previousTarget!=target) glide=12*std::log2(ratio)-desired;
+        glide*=std::exp(-dt/jmax(.1,transition));
+        const bool bypassNote=!forced && route(target)==3;
+        double delta=bypassNote ? 0. : desired+glide;
+        if(bypassNote) voiced=false;
         goal=std::exp2(jlimit(-12.,12.,delta*value(Amount)*.01)/12);
-        deviation=(float)((note-target)*100); targetNote=target; validBefore=true;
+        targetNote=target; validBefore=true;
     }
     float read(int ch,double age) const
     {
@@ -186,7 +244,7 @@ public:
     {
         ScopedNoDenormals guard;
         auto event=midi.cbegin(); float inPeak=0,outPeak=0;
-        const double smoothing=1-std::exp(-1/(rate*.001*jmax(1.f,value(Speed))));
+        const double smoothing=1-std::exp(-1/(rate*.001*jmax(.1f,value(Speed))));
         const float toneGain=Decibels::decibelsToGain(value(ToneLevel));
         for(int i=0;i<b.getNumSamples();++i)
         {
@@ -213,7 +271,8 @@ public:
 
                 // Anchor the new grain one source cycle after the previous grain's start.
                 const double desired=head+outputPeriod*readSpeed-period;
-                head=desired-std::round((desired-latency)/period)*period;
+                const double anchor=2+period*.5+2*outputPeriod*jmax(0.,readSpeed-1.);
+                head=desired-std::round((desired-anchor)/period)*period;
             }
             const double w=.5-.5*std::cos(MathConstants<double>::pi*phase);
             const float wet=(voiced && value(Enabled)>.5f && value(Amount)>0 && std::abs(ratio-1)>.0002) ? 1.f:0.f;
@@ -223,13 +282,14 @@ public:
             oscillator-=std::floor(oscillator);
             for(int ch=0;ch<b.getNumChannels();++ch)
             {
-                const float dry=read(ch,latency);
+                const float dry=delay.getSample(ch,write);
                 const double shifted=w*read(ch,head)+(1-w)*read(ch,oldHead);
                 float out=(float)(dry+gain*(shifted-dry)+monitorGain*std::sin(MathConstants<double>::twoPi*oscillator));
                 b.setSample(ch,i,out);outPeak=jmax(outPeak,std::abs(out));
             }
             write=(write+1)%delay.getNumSamples();
         }
+        deviation=voiced && value(Enabled)>.5f ? (float)(1200*std::log2(ratio)) : 0.f;
         const float decay=(float)std::exp(-b.getNumSamples()/(rate*.12));
         inputLevel=jmax(inPeak,inputLevel.load()*decay);outputLevel=jmax(outPeak,outputLevel.load()*decay);
         midi.clear();

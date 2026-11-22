@@ -15,15 +15,15 @@ Projeto C++ com JUCE 8.0.6. Gera dez efeitos VST3 x64 independentes, com interfa
 | FETStrike | CLA-76 | Compressor FET com Input, Output, tempos, quatro ratios, All e medidor de agulha |
 | SonmooTune | Waves Tune Real-Time | Correção vocal por escala ou MIDI, tolerância, transições, vibrato, referência e teclado interativo |
 
-## SonmooTune 0.8.1
+## SonmooTune 0.9.0
 
 O afinador anteriormente chamado PitchPilot passa a aparecer como SonmooTune. O alvo de compilação continua sendo `PitchPilot_VST3`.
 
-Afinador de voz monofônica com entrada mono ou estéreo. Escolha a extensão vocal, a tônica e a escala. **Speed** ajusta a velocidade da correção e **Transition** suaviza mudanças de nota-alvo. **Tolerance** exige uma margem em cents e um tempo mínimo antes da troca. **Link times** usa o tempo de Speed para as transições. O visor mostra a nota de entrada e seu desvio em relação ao alvo. No teclado, verde indica o alvo e o ponto coral indica a entrada.
+Afinador de voz monofônica com entrada mono ou estéreo. Escolha a extensão vocal, a tônica e a escala. **Speed** ajusta a velocidade da correção e **Transition** suaviza mudanças de nota-alvo. Com as duas tolerâncias ativas, a primeira condição atingida (desvio em cents ou tempo fora da nota) libera a troca. **Link times** usa o tempo de Speed para as transições. O visor mostra o alvo, a correção em cents calculada a partir da razão aplicada e a nota detectada. No teclado, verde indica o alvo e o ponto coral indica a entrada.
 
-Em **Edit scale**, clique em uma tecla para incluir ou excluir aquela classe de nota em todas as oitavas. Desative **Group octaves** para editar só a oitava clicada. O nível de **Reference tone** é ajustável em dB. **Reset keys** restaura a escala. Em **Reference tone**, segure uma tecla para ouvir a referência. Em **Hold target**, segure a nota à qual deseja afinar. Para controlar pelo Piano Roll, envie as notas com MIDI Out para a porta MIDI de entrada do wrapper e ative **MIDI target**. Ao soltar todas as notas, a escala volta a determinar o alvo.
+Em **Edit scale**, clique em uma tecla para incluir ou excluir aquela classe de nota em todas as oitavas. Clique com o botão direito para escolher correção para cima, para baixo ou bypass da nota. Um alvo MIDI pode substituir essa regra. Desative **Group octaves** para editar só a oitava clicada. O nível de **Reference tone** é ajustável em dB. **Reset keys** restaura a escala. Em **Reference tone**, segure uma tecla para ouvir a referência. Em **Hold target**, segure a nota à qual deseja afinar. Para controlar pelo Piano Roll, envie as notas com MIDI Out para a porta MIDI de entrada do wrapper e ative **MIDI target**. Ao soltar todas as notas, a escala volta a determinar o alvo.
 
-A correção usa detecção de periodicidade e ressíntese granular com preservação opcional de formantes. O controle Vibrato regula os desvios rápidos em torno da tendência de afinação. A latência declarada é de 45 ms. Use em uma voz isolada. O DSP é próprio. A [documentação da Waves sobre correção vocal](https://www.waves.com/how-to-correct-vocal-pitch-more-naturally) orientou o fluxo de uso.
+A correção usa detecção de periodicidade e ressíntese granular com preservação opcional de formantes. O controle Vibrato acompanha oscilações recorrentes de afinação. O sinal direto passa sem o atraso fixo de 45 ms da versão 0.8.1. O VST3 declara zero amostras de latência fixa. A detecção e os grãos de correção têm resposta temporal dependente da nota. Use em uma voz isolada. O DSP é próprio. O [manual do Waves Tune Real-Time](https://assets.wavescdn.com/pdf/plugins/tune-real-time-v16-update.pdf) orientou o fluxo de uso. Em bancada a 48 kHz, uma senoide de 451 Hz saiu a 439,88 Hz com correção total e a 445,40 Hz com correção de 50%. A equivalência sonora com o Waves em gravações vocais ainda precisa de comparação direta.
 
 ## FETStrike 0.7.0
 

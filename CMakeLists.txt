@@ -6,7 +6,7 @@ FetchContent_Declare(JUCE GIT_REPOSITORY https://github.com/juce-framework/JUCE.
 FetchContent_MakeAvailable(JUCE)
 function(add_effect target code kind category)
     if(kind EQUAL 9)
-        set(effect_options NEEDS_MIDI_INPUT TRUE PRODUCT_NAME "SonmooTune" VERSION 0.8.1)
+        set(effect_options NEEDS_MIDI_INPUT TRUE PRODUCT_NAME "SonmooTune" VERSION 0.9.0)
     endif()
     juce_add_plugin(${target}
         COMPANY_NAME "SonmooKit"

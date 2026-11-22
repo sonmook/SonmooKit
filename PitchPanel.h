@@ -106,6 +106,7 @@ public:
         reset.onClick=[this]{
             for(int k=0;k<12;++k)setParam("key"+String(k),0);
             for(int n=24;n<84;++n)setParam("note"+String(n),0);
+            for(int i=0;i<72;++i)setParam("route"+String(i),0);
         };
         for(auto* button:{&group,&vib}){addAndMakeVisible(*button);button->setClickingTogglesState(true);}
         group.setBounds(780,419,155,26);vib.setBounds(30,254,83,26);
@@ -121,7 +122,28 @@ public:
     void mouseDown(const MouseEvent& e) override
     {
         int n=hit(e.position);if(n<0)return;
-        if(mode==0)setParam(p.value(PitchPilot::Group)>.5f ? "key"+String(n%12) : "note"+String(n),p.allowed(n)?2.f:1.f);
+        if(mode==0)
+        {
+            const bool grouped=p.value(PitchPilot::Group)>.5f;
+            const String scope=grouped ? "key"+String(n%12) : "note"+String(n);
+            const String routeID="route"+String(grouped ? n%12 : 12+n-24);
+            if(e.mods.isPopupMenu())
+            {
+                PopupMenu menu;menu.addItem(1,"Allow");menu.addItem(2,"Exclude");
+                menu.addItem(3,"Pitch up");menu.addItem(4,"Pitch down");menu.addItem(5,"Bypass tuning");
+                menu.showMenuAsync(PopupMenu::Options().withTargetComponent(this),
+                    [safe=Component::SafePointer<PitchPanel>(this),scope,routeID](int item){
+                        if(safe!=nullptr && item>0){
+                            safe->setParam(scope,item==2 ? 2.f : 1.f);
+                            safe->setParam(routeID,(float)jmax(0,item-2));
+                        }
+                    });
+            }
+            else
+            {
+                const bool on=p.allowed(n);setParam(routeID,0);setParam(scope,on?2.f:1.f);
+            }
+        }
         if(mode==1)p.audition=n;
         if(mode==2)p.keyboardTarget=n;
     }
@@ -155,8 +177,8 @@ public:
             g.setColour(lit?mint:i==0?Colour(0xff829291):Colour(0xff344348));
             g.drawLine({Point<float>{cx,cy}+d*69.f,Point<float>{cx,cy}+d*98.f},5.8f);
         }
-        label("PITCH  /  CENTS",523,62,155,19,12,muted);label(noteName(detected),520,146,160,54,42,mint);
-        label(aimed<0?"Waiting for voice":String(roundToInt(cents))+" ct    >    "+noteName(aimed),488,223,224,28,16,Colours::white);
+        label("TARGET  /  CORRECTION",523,62,155,19,12,muted);label(noteName(aimed),520,146,160,54,42,mint);
+        label(aimed<0?"Waiting for voice":String(roundToInt(cents))+" ct   /   Input "+noteName(detected),488,223,224,28,16,Colours::white);
         auto meter=[&](int x,float v,String title)
         {
             label(title,x-14,70,42,17,11,muted);
@@ -170,12 +192,14 @@ public:
             Colour key=b?(on?Colour(0xff253035):Colour(0xff445156)):(on?Colour(0xffe8e8dc):Colour(0xff929d9c));
             if(n==aimed || n==p.audition.load())key=mint;
             g.setColour(key);g.fillRoundedRectangle(r,2);
+            const int rule=p.route(n);
+            if(rule) label(rule==1?"+":rule==2?"-":"B",(int)r.getX(),(int)r.getY()+4,(int)r.getWidth(),16,12,b?Colours::white:ink);
             if(n==detected){g.setColour(Colour(0xffea9684));g.fillEllipse(r.getCentreX()-3,r.getBottom()-16,6,6);}
             if(n%12==0)label(noteName(n),(int)r.getX(),393,(int)r.getWidth(),20,11,ink);
         }
         label("KEYBOARD",24,296,110,23,12,muted,Justification::centredLeft);
         label("TARGET",720,296,85,23,11,mint);label("INPUT",819,296,80,23,11,Colour(0xffea9684));
-        label(mode==0?(p.value(PitchPilot::Group)>.5f?"Click a key to allow or exclude its pitch class across all octaves.":"Click a key to allow or exclude that note in this octave."):mode==1?"Hold a key to hear its reference pitch.":"Hold a key to tune the vocal to that note.",24,421,880,20,13,muted,Justification::centredLeft);
+        label(mode==0?(p.value(PitchPilot::Group)>.5f?"Click to toggle all octaves. Right-click for direction or bypass.":"Click to toggle this note. Right-click for direction or bypass."):mode==1?"Hold a key to hear its reference pitch.":"Hold a key to tune the vocal to that note.",24,421,880,20,13,muted,Justification::centredLeft);
         label("VOCAL RANGE",25,450,200,22,13,muted,Justification::centredLeft);
         label("REFERENCE (Hz)",804,450,124,22,13,muted);
         label("ROOT",26,524,78,20,12,muted,Justification::centredLeft);label("SCALE",116,524,156,20,12,muted,Justification::centredLeft);
