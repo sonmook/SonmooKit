@@ -1,21 +1,27 @@
 cmake_minimum_required(VERSION 3.22)
-project(SonmooKit VERSION 0.7.0 LANGUAGES C CXX)
+project(SonmooKit VERSION 0.8.0 LANGUAGES C CXX)
 include(FetchContent)
 FetchContent_Declare(JUCE GIT_REPOSITORY https://github.com/juce-framework/JUCE.git
     GIT_TAG 8.0.6 GIT_SHALLOW TRUE)
 FetchContent_MakeAvailable(JUCE)
 function(add_effect target code kind category)
+    if(kind EQUAL 9)
+        set(midi_input NEEDS_MIDI_INPUT TRUE)
+    endif()
     juce_add_plugin(${target}
         COMPANY_NAME "SonmooKit"
         BUNDLE_ID "org.audiokit.${target}"
         PLUGIN_MANUFACTURER_CODE Akfx
         PLUGIN_CODE ${code}
+        ${midi_input}
         FORMATS VST3
         VST3_CATEGORIES Fx ${category}
         COPY_PLUGIN_AFTER_BUILD FALSE)
     if(kind GREATER_EQUAL 5 AND kind LESS_EQUAL 7)
         target_sources(${target} PRIVATE Advanced.cpp)
         target_link_libraries(${target} PRIVATE juce::juce_dsp)
+    elseif(kind EQUAL 9)
+        target_sources(${target} PRIVATE PitchPilot.cpp)
     else()
         target_sources(${target} PRIVATE Plugin.cpp)
     endif()
@@ -33,3 +39,4 @@ add_effect(CurveTen Crtn 5 EQ)
 add_effect(VoiceStack Vstk 6 Delay)
 add_effect(PulseEQ Plsq 7 EQ)
 add_effect(FETStrike Ftst 8 Dynamics)
+add_effect(PitchPilot PtPl 9 PitchShift)
