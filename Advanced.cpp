@@ -86,7 +86,14 @@ State::ParameterLayout layout()
         }
     }
     add("output", "Output Gain", -24, 12, .1f, 0);
-    if constexpr (!isEqualiser)
+    if constexpr (isEqualiser)
+    {
+        add("inputL", "Left Input", -60, 0, .1f, 0);
+        add("inputR", "Right Input", -60, 0, .1f, 0);
+        toggle("phaseL", "Left Polarity Invert", false);
+        toggle("phaseR", "Right Polarity Invert", false);
+    }
+    else
     {
         toggle("direct", "Direct Signal", true);
         toggle("align", "Align Direct", false);
@@ -176,6 +183,7 @@ struct DisplayData
     std::atomic<bool> ready{false}, listening{false}, resetModulation{false};
     std::atomic<double> sampleRate{48000};
     std::atomic<float> peak{0};
+    std::array<std::atomic<float>, 2> channelPeak{};
     int received = 0;
 
     void push(float sample)
@@ -192,350 +200,7 @@ struct DisplayData
 
 #include "VoiceEditor.h"
 
-class Editor final : public juce::AudioProcessorEditor, private juce::Timer
-{
-public:
-    Editor(juce::AudioProcessor& processor, State& stateToEdit, DisplayData& displayData)
-        : AudioProcessorEditor(processor), state(stateToEdit), display(displayData)
-    {
-        for (int i = 0; i < count; ++i)
-        {
-            tabs[i].setButtonText(juce::String(i + 1));
-            tabs[i].setColour(juce::TextButton::buttonColourId, surface);
-            tabs[i].setColour(juce::TextButton::buttonOnColourId, colours[i].darker(.5f));
-            tabs[i].onClick = [this, i] { select(i); };
-            addAndMakeVisible(tabs[i]);
-        }
-        addAndMakeVisible(enabled);
-        if constexpr (isEqualiser)
-        {
-            type.addItemList({"Bell", "Low Shelf", "High Shelf", "Low Pass", "High Pass", "Proportional Q"}, 1);
-            addAndMakeVisible(type);
-            global("output", "Output", " dB");
-        }
-        else
-        {
-            addAndMakeVisible(octave);
-            direct.setButtonText("Direct");
-            addAndMakeVisible(direct);
-            directAttachment = std::make_unique<State::ButtonAttachment>(state, "direct", direct);
-            global("directGain", "Direct Gain", " dB");
-            global("directPan", "Direct Pan", " deg");
-            global("fbCut", "FB High Pass", " Hz");
-            global("wetLow", "Voice Low Cut", " Hz");
-            global("wetHigh", "Voice High Cut", " Hz");
-            global("output", "Output", " dB");
-        }
-        select(0);
-        setSize(720, isEqualiser ? 478 : 553);
-        spectrum.fill(-100);
-        if constexpr (isEqualiser) display.listening.store(true, std::memory_order_relaxed);
-        startTimerHz(24);
-    }
-
-    ~Editor() override
-    {
-        stopTimer();
-        finishDrag();
-        if constexpr (isEqualiser) display.listening.store(false, std::memory_order_relaxed);
-    }
-
-    void paint(juce::Graphics& g) override
-    {
-        g.setGradientFill({surface, 0, 0, background, 0, float(getHeight()), false});
-        g.fillAll();
-        g.setColour(colours[0]);
-        g.setFont(juce::FontOptions(13.0f, juce::Font::bold));
-        g.drawText("SonmooKit", 24, 11, 180, 20, juce::Justification::centredLeft);
-        g.setColour(ink);
-        g.setFont(juce::FontOptions(30.0f, juce::Font::bold));
-        g.drawText(getAudioProcessor()->getName(), 24, 28, 385, 38, juce::Justification::centredLeft);
-        g.setFont(juce::FontOptions(12.0f));
-        const auto db = juce::Decibels::gainToDecibels(heldPeak, -90.0f);
-        const auto text = db <= -90 ? juce::String("OUT  -inf") : "OUT  " + juce::String(db, 1) + " dBFS";
-        g.drawText(text, getWidth() - 179, 35, 151, 25, juce::Justification::centredRight);
-        g.setColour(juce::Colour(0xff0d1423));
-        g.fillRoundedRectangle(plotBounds().expanded(11), 9);
-        if constexpr (isEqualiser) drawEqualiser(g);
-        else drawVoices(g);
-    }
-
-    void resized() override
-    {
-        for (int i = 0; i < count; ++i) tabs[i].setBounds(24 + i * 42, 343, 36, 25);
-        enabled.setBounds(451, 343, 111, 25);
-        if constexpr (isEqualiser) type.setBounds(562, 343, 134, 25);
-        else
-        {
-            octave.setBounds(559, 343, 139, 25);
-            direct.setBounds(24, 507, 63, 23);
-        }
-        const int width = isEqualiser ? 133 : 94;
-        for (size_t i = 0; i < fields.size(); ++i)
-        {
-            place(*fields[i], 24 + int(i) * width, 388, width - 10);
-        }
-        if constexpr (isEqualiser)
-            place(*globals.front(), 24 + int(fields.size()) * width, 388, width - 10);
-        else
-            for (size_t i = 0; i < globals.size(); ++i)
-                place(*globals[i], 99 + int(i) * 99, 483, 91);
-    }
-
-    void mouseDown(const juce::MouseEvent& event) override
-    {
-        if (!plotBounds().contains(event.position)) return;
-        float closest = 22;
-        int target = -1;
-        for (int i = 0; i < count; ++i)
-        {
-            const float distance = node(i).getDistanceFrom(event.position);
-            if (distance < closest) { closest = distance; target = i; }
-        }
-        if (target < 0) return;
-        select(target);
-        dragX = state.getParameter(id(target, isEqualiser ? "freq" : "delay"));
-        dragY = state.getParameter(id(target, isEqualiser ? "gain" : "pan"));
-        dragX->beginChangeGesture();
-        dragY->beginChangeGesture();
-    }
-
-    void mouseDrag(const juce::MouseEvent& event) override
-    {
-        if (!dragX) return;
-        const auto area = plotBounds();
-        const float x = std::clamp((event.position.x - area.getX()) / area.getWidth(), 0.f, 1.f);
-        const float y = std::clamp((event.position.y - area.getY()) / area.getHeight(), 0.f, 1.f);
-        const float a = isEqualiser ? frequency(x) : x * 100;
-        const float b = isEqualiser ? 18 - 36 * y : 45 - 90 * y;
-        dragX->setValueNotifyingHost(dragX->convertTo0to1(a));
-        dragY->setValueNotifyingHost(dragY->convertTo0to1(b));
-        repaint();
-    }
-
-    void mouseUp(const juce::MouseEvent&) override { finishDrag(); }
-
-private:
-    struct Field
-    {
-        juce::Label label;
-        juce::Slider slider;
-        std::unique_ptr<State::SliderAttachment> attachment;
-    };
-
-    void finishDrag()
-    {
-        if (dragX)
-        {
-            dragX->endChangeGesture();
-            dragY->endChangeGesture();
-            dragX = dragY = nullptr;
-        }
-    }
-
-    void place(Field& field, int x, int y, int w)
-    {
-        field.label.setBounds(x, y, w, 21);
-        field.slider.setBounds(x, y + 23, w, 30);
-    }
-
-    std::unique_ptr<Field> control(const juce::String& key, const char* label, const char* unit)
-    {
-        auto field = std::make_unique<Field>();
-        field->label.setText(label, juce::dontSendNotification);
-        field->label.setColour(juce::Label::textColourId, dim);
-        field->slider.setSliderStyle(juce::Slider::LinearHorizontal);
-        field->slider.setTextBoxStyle(juce::Slider::TextBoxAbove, false, 80, 20);
-        field->slider.setTitle(label);
-        field->slider.setColour(juce::Slider::trackColourId, colours[selected]);
-        field->slider.setColour(juce::Slider::thumbColourId, ink);
-        field->slider.setColour(juce::Slider::textBoxTextColourId, ink);
-        field->slider.setColour(juce::Slider::textBoxBackgroundColourId, surface);
-        field->slider.setColour(juce::Slider::textBoxOutlineColourId, line);
-        addAndMakeVisible(field->label);
-        addAndMakeVisible(field->slider);
-        field->attachment = std::make_unique<State::SliderAttachment>(state, key, field->slider);
-        field->slider.textFromValueFunction = [unit = juce::String(unit)] (double value)
-        {
-            return juce::String(value, unit == " Hz" && value >= 100 ? 0 : 1) + unit;
-        };
-        field->slider.valueFromTextFunction = [] (const juce::String& value) { return value.getDoubleValue(); };
-        field->slider.updateText();
-        return field;
-    }
-
-    void global(const char* key, const char* label, const char* unit)
-    {
-        globals.push_back(control(key, label, unit));
-    }
-
-    void select(int i)
-    {
-        selected = i;
-        for (int j = 0; j < count; ++j) tabs[j].setToggleState(i == j, juce::dontSendNotification);
-        fields.clear();
-        onAttachment.reset();
-        typeAttachment.reset();
-        octaveAttachment.reset();
-        enabled.setButtonText((isEqualiser ? juce::String("Band ") : juce::String("Voice ")) + juce::String(i + 1));
-        onAttachment = std::make_unique<State::ButtonAttachment>(state, id(i, "on"), enabled);
-        const auto add = [&] (const char* key, const char* label, const char* unit)
-        {
-            fields.push_back(control(id(i, key), label, unit));
-        };
-        if constexpr (isEqualiser)
-        {
-            add("freq", "Frequency", " Hz");
-            add("gain", "Gain", " dB");
-            add("q", "Q", "");
-            typeAttachment = std::make_unique<State::ComboBoxAttachment>(state, id(i, "type"), type);
-        }
-        else
-        {
-            add("delay", "Delay", " ms");
-            add("detune", "Detune", " ct");
-            add("pan", "Pan", " deg");
-            add("gain", "Gain", " dB");
-            add("feedback", "Feedback", " %");
-            add("depth", "Mod Depth", " ct");
-            add("rate", "Mod Rate", " Hz");
-            octave.setButtonText("Octave Down");
-            octaveAttachment = std::make_unique<State::ButtonAttachment>(state, id(i, "octave"), octave);
-        }
-        resized();
-        repaint();
-    }
-
-    float value(int i, const char* field) const { return Parameters::get(state.getRawParameterValue(id(i, field))); }
-    static float frequency(float fraction) { return 16 * std::pow(21357.0f / 16, fraction); }
-    static float fraction(float hz) { return std::log(hz / 16) / std::log(21357.0f / 16); }
-    juce::Rectangle<float> plotBounds() const { return {38, 91, 644, 222}; }
-
-    juce::Point<float> node(int i) const
-    {
-        const auto area = plotBounds();
-        const float x = isEqualiser ? fraction(value(i, "freq")) : value(i, "delay") / 100;
-        const float y = isEqualiser ? .5f - value(i, "gain") / 36 : .5f - value(i, "pan") / 90;
-        return {area.getX() + x * area.getWidth(), area.getY() + y * area.getHeight()};
-    }
-
-    void grid(juce::Graphics& g, float x, const juce::String& label)
-    {
-        const auto area = plotBounds();
-        g.setColour(line);
-        g.drawVerticalLine(int(x), area.getY(), area.getBottom());
-        g.setColour(dim);
-        g.setFont(juce::FontOptions(10.0f));
-        g.drawText(label, int(x) - 18, int(area.getBottom()) + 1, 36, 13, juce::Justification::centred);
-    }
-
-    void drawNodes(juce::Graphics& g)
-    {
-        for (int i = 0; i < count; ++i)
-        {
-            const auto point = node(i);
-            const auto tint = colours[i].withAlpha(value(i, "on") > .5f ? 1.f : .35f);
-            const float radius = i == selected ? 10.0f : 8.0f;
-            g.setColour(tint);
-            g.fillEllipse(point.x - radius, point.y - radius, radius * 2, radius * 2);
-            g.setColour(background);
-            g.setFont(juce::FontOptions(11.0f, juce::Font::bold));
-            g.drawText(juce::String(i + 1), int(point.x) - 10, int(point.y) - 9, 20, 18, juce::Justification::centred);
-        }
-    }
-
-    void drawEqualiser(juce::Graphics& g)
-    {
-        const auto area = plotBounds();
-        for (const float hz : {31.f, 63.f, 125.f, 250.f, 500.f, 1000.f, 2000.f, 4000.f, 8000.f, 16000.f})
-        {
-            const auto label = hz >= 1000 ? juce::String(int(hz / 1000)) + "k" : juce::String(int(hz));
-            grid(g, area.getX() + fraction(hz) * area.getWidth(), label);
-        }
-        g.setColour(line);
-        for (int i = 1; i < 6; ++i)
-            g.drawHorizontalLine(int(area.getY() + i * area.getHeight() / 6), area.getX(), area.getRight());
-        const double rate = display.sampleRate.load(std::memory_order_relaxed);
-        std::array<Biquad, count> filters{};
-        for (int i = 0; i < count; ++i)
-            if (value(i, "on") > .5f)
-                filters[i] = filter(rate, value(i, "freq"), value(i, "gain"), value(i, "q"), int(value(i, "type")));
-        juce::Path curve, trace;
-        for (int i = 0; i <= 320; ++i)
-        {
-            const float offset = float(i) / 320;
-            const float hz = frequency(offset);
-            const float x = area.getX() + offset * area.getWidth();
-            const auto z = std::polar(1.0, -2 * pi * std::min(double(hz), rate * .499) / rate);
-            const auto z2 = z * z;
-            double db = 0;
-            for (const auto& f : filters)
-                db += 20 * std::log10(std::max(1e-10, std::abs((f.b0 + f.b1 * z + f.b2 * z2) /
-                                                                  (1.0 + f.a1 * z + f.a2 * z2))));
-            const float y = area.getY() + area.getHeight() * std::clamp(.5f - float(db) / 36, 0.f, 1.f);
-            const int bin = std::clamp(juce::roundToInt(hz * fftSize / rate), 1, fftSize / 2);
-            const float sy = area.getBottom() - area.getHeight() * std::clamp((spectrum[bin] + 100) / 100, 0.f, 1.f);
-            if (i == 0) { curve.startNewSubPath(x, y); trace.startNewSubPath(x, sy); }
-            else { curve.lineTo(x, y); trace.lineTo(x, sy); }
-        }
-        g.setColour(dim.withAlpha(.5f));
-        g.strokePath(trace, juce::PathStrokeType(1));
-        g.setColour(colours[selected]);
-        g.strokePath(curve, juce::PathStrokeType(2));
-        drawNodes(g);
-    }
-
-    void drawVoices(juce::Graphics& g)
-    {
-        const auto area = plotBounds();
-        for (int ms = 0; ms <= 100; ms += 20)
-            grid(g, area.getX() + ms * area.getWidth() / 100, juce::String(ms) + " ms");
-        g.setColour(line);
-        g.drawHorizontalLine(int(area.getCentreY()), area.getX(), area.getRight());
-        g.setColour(dim);
-        g.setFont(juce::FontOptions(11.f, juce::Font::bold));
-        g.drawText("RIGHT", int(area.getX()) + 8, 94, 64, 16, juce::Justification::centredLeft);
-        g.drawText("LEFT", int(area.getX()) + 8, 291, 64, 16, juce::Justification::centredLeft);
-        drawNodes(g);
-    }
-
-    void timerCallback() override
-    {
-        heldPeak = std::max(heldPeak * .85f, display.peak.exchange(0, std::memory_order_relaxed));
-        if constexpr (isEqualiser)
-        {
-            if (display.ready.load(std::memory_order_acquire))
-            {
-                fftBuffer.fill(0);
-                std::copy(display.frame.begin(), display.frame.end(), fftBuffer.begin());
-                display.ready.store(false, std::memory_order_release);
-                window.multiplyWithWindowingTable(fftBuffer.data(), fftSize);
-                fft.performFrequencyOnlyForwardTransform(fftBuffer.data(), true);
-                for (size_t i = 0; i < spectrum.size(); ++i)
-                    spectrum[i] = std::max(spectrum[i] - 2, juce::Decibels::gainToDecibels(
-                        fftBuffer[i] * 4 / fftSize, -100.0f));
-            }
-        }
-        repaint();
-    }
-
-    State& state;
-    DisplayData& display;
-    std::array<juce::TextButton, count> tabs;
-    juce::ToggleButton enabled, octave, direct;
-    juce::ComboBox type;
-    std::vector<std::unique_ptr<Field>> fields, globals;
-    std::unique_ptr<State::ButtonAttachment> onAttachment, octaveAttachment, directAttachment;
-    std::unique_ptr<State::ComboBoxAttachment> typeAttachment;
-    juce::RangedAudioParameter* dragX{};
-    juce::RangedAudioParameter* dragY{};
-    int selected = 0;
-    float heldPeak = 0;
-    juce::dsp::FFT fft{fftOrder};
-    juce::dsp::WindowingFunction<float> window{fftSize, juce::dsp::WindowingFunction<float>::hann, false};
-    std::array<float, fftSize * 2> fftBuffer{};
-    std::array<float, fftSize / 2 + 1> spectrum{};
-};
+#include "CurveEditor.h"
 
 class Processor final : public juce::AudioProcessor
 {
@@ -562,7 +227,12 @@ public:
             }
         }
         output = state.getRawParameterValue("output");
-        if constexpr (!isEqualiser)
+        if constexpr (isEqualiser)
+        {
+            input = {state.getRawParameterValue("inputL"), state.getRawParameterValue("inputR")};
+            invert = {state.getRawParameterValue("phaseL"), state.getRawParameterValue("phaseR")};
+        }
+        else
         {
             directEnable = state.getRawParameterValue("direct");
             directGain = state.getRawParameterValue("directGain");
@@ -585,7 +255,7 @@ public:
     bool hasEditor() const override { return true; }
     juce::AudioProcessorEditor* createEditor() override
     {
-        if constexpr (isEqualiser) return new Editor(*this, state, display);
+        if constexpr (isEqualiser) return new CurveEditor(*this, state, display);
         return new VoiceEditor(*this, state, display);
     }
     int getNumPrograms() override { return 1; }
@@ -637,7 +307,16 @@ public:
         else doubleVoices(audio);
         float peak = 0;
         for (int ch = 0; ch < audio.getNumChannels(); ++ch)
-            peak = std::max(peak, audio.getMagnitude(ch, 0, audio.getNumSamples()));
+        {
+            const float level = audio.getMagnitude(ch, 0, audio.getNumSamples());
+            peak = std::max(peak, level);
+            if constexpr (isEqualiser)
+            {
+                auto& meter = display.channelPeak[ch];
+                float previous = meter.load(std::memory_order_relaxed);
+                while (level > previous && !meter.compare_exchange_weak(previous, level, std::memory_order_relaxed)) {}
+            }
+        }
         float last = display.peak.load(std::memory_order_relaxed);
         while (peak > last && !display.peak.compare_exchange_weak(last, peak, std::memory_order_relaxed)) {}
     }
@@ -668,9 +347,11 @@ private:
         for (int ch = 0; ch < audio.getNumChannels(); ++ch)
         {
             auto* samples = audio.getWritePointer(ch);
+            const float inputGain = (P::get(invert[ch]) > .5f ? -1.f : 1.f)
+                * juce::Decibels::decibelsToGain(P::get(input[ch]), -60.f);
             for (int n = 0; n < audio.getNumSamples(); ++n)
             {
-                double x = samples[n];
+                double x = samples[n] * inputGain;
                 for (int i = 0; i < count; ++i)
                 {
                     const auto& c = coefficients[i];
@@ -805,6 +486,7 @@ private:
     std::array<Parameters, count> params{};
     std::array<std::atomic<float>*, count> voiceGain{};
     std::atomic<float>* output{};
+    std::array<std::atomic<float>*, 2> input{}, invert{};
     std::atomic<float>* directEnable{};
     std::atomic<float>* directGain{};
     std::atomic<float>* directPan{};
