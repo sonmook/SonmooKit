@@ -13,10 +13,10 @@ public:
             row[i].setBounds(161, y, 35, 25);
             row[i].onClick = [this, i] { select(i); };
             addAndMakeVisible(row[i]);
-            button(id(i, "on"), "On", {207, y, 61, 25});
-            slider(id(i, "gain"), "Gain", " dB", {281, y, 125, 25}, colours[i]);
-            slider(id(i, "freq"), "Frequency", " Hz", {424, y, 127, 25}, colours[i]);
-            slider(id(i, "q"), "Q", "", {567, y, 120, 25}, colours[i]);
+            button(bandKey(i, "on"), "On", {207, y, 61, 25});
+            slider(bandKey(i, "gain"), "Gain", " dB", {281, y, 125, 25}, colours[i]);
+            slider(bandKey(i, "freq"), "Frequency", " Hz", {424, y, 127, 25}, colours[i]);
+            slider(bandKey(i, "q"), "Q", "", {567, y, 120, 25}, colours[i]);
             auto& choice = types[i];
             choice.addItemList({"Bell", "Low Shelf", "High Shelf", "Low Pass", "High Pass", "Proportional Q"}, 1);
             choice.setTitle("Band " + juce::String(i + 1) + " filter type");
@@ -24,8 +24,22 @@ public:
             choice.setColour(juce::ComboBox::backgroundColourId, background);
             choice.setColour(juce::ComboBox::outlineColourId, line);
             addAndMakeVisible(choice);
-            typeBinding[i] = std::make_unique<State::ComboBoxAttachment>(state, id(i, "type"), choice);
+            typeBinding[i] = std::make_unique<State::ComboBoxAttachment>(state, bandKey(i, "type"), choice);
         }
+        channelMenu.addItemList({"Linked", "Edit Left", "Edit Right"}, 1);
+        channelMenu.setBounds(521, 22, 123, 28);
+        addAndMakeVisible(channelMenu);
+        channelBinding = std::make_unique<State::ComboBoxAttachment>(state, "channelEdit", channelMenu);
+        copy.setButtonText("Copy L to R");
+        copy.setBounds(654, 22, 129, 28);
+        copy.onClick = [this]
+        {
+            for (int i = 0; i < 10; ++i)
+                for (auto field : {"on","freq","gain","q","type"})
+                    change(*state.getParameter("right_" + id(i, field)), state.getRawParameterValue(id(i, field))->load());
+        };
+        addAndMakeVisible(copy);
+        refreshChannel();
         slider("inputL", "Left input gain", "", {29, 410, 52, 231}, colours[0], true);
         slider("inputR", "Right input gain", "", {86, 410, 52, 231}, colours[0], true);
         button("phaseL", "Pol L", {28, 377, 57, 24});
@@ -37,7 +51,7 @@ public:
         flat.onClick = [this]
         {
             for (int i = 0; i < 10; ++i)
-                change(*state.getParameter(id(i, "gain")), 0);
+                change(*state.getParameter(bandKey(i, "gain")), 0);
         };
         addAndMakeVisible(flat);
         showSpectrum.setButtonText("Spectrum");
@@ -110,14 +124,14 @@ public:
         start = e.position;
         if (e.mods.isAltDown())
         {
-            dragQ = state.getParameter(id(i, "q"));
+            dragQ = state.getParameter(bandKey(i, "q"));
             initialQ = dragQ->getValue();
             dragQ->beginChangeGesture();
         }
         else
         {
-            dragFrequency = state.getParameter(id(i, "freq"));
-            dragGain = state.getParameter(id(i, "gain"));
+            dragFrequency = state.getParameter(bandKey(i, "freq"));
+            dragGain = state.getParameter(bandKey(i, "gain"));
             dragFrequency->beginChangeGesture();
             dragGain->beginChangeGesture();
         }
@@ -155,10 +169,41 @@ public:
         const int i = nearest(e.position);
         if (i < 0) return;
         finishDrag();
-        change(*state.getParameter(id(i, "on")), value(i, "on") > .5f ? 0.f : 1.f);
+        change(*state.getParameter(bandKey(i, "on")), value(i, "on") > .5f ? 0.f : 1.f);
     }
 
 private:
+    juce::String bandKey(int i, const char* field) const
+    {
+        return (editingRight ? "right_" : "") + id(i, field);
+    }
+    void refreshChannel()
+    {
+        const bool right = state.getRawParameterValue("channelEdit")->load() > 1.5f;
+        if (right == editingRight) return;
+        finishDrag();
+        editingRight = right;
+        for (int i = 0; i < 10; ++i)
+        {
+            switches[i]->attachment.reset();
+            switches[i]->attachment = std::make_unique<State::ButtonAttachment>(state, bandKey(i, "on"), switches[i]->widget);
+            int j = 0;
+            for (auto field : {"gain","freq","q"})
+            {
+                auto& f = *faders[3*i + j++];
+                auto format = f.widget.textFromValueFunction;
+                auto parse = f.widget.valueFromTextFunction;
+                f.attachment.reset();
+                f.attachment = std::make_unique<State::SliderAttachment>(state, bandKey(i, field), f.widget);
+                f.widget.textFromValueFunction = format;
+                f.widget.valueFromTextFunction = parse;
+                f.widget.updateText();
+            }
+            typeBinding[i].reset();
+            typeBinding[i] = std::make_unique<State::ComboBoxAttachment>(state, bandKey(i, "type"), types[i]);
+        }
+    }
+
     struct Fader
     {
         juce::Slider widget;
@@ -228,7 +273,7 @@ private:
         dragFrequency = dragGain = dragQ = nullptr;
     }
 
-    float value(int i, const char* key) const { return Parameters::get(state.getRawParameterValue(id(i, key))); }
+    float value(int i, const char* key) const { return Parameters::get(state.getRawParameterValue(bandKey(i, key))); }
     static float unit(float v) { return juce::jlimit(0.f, 1.f, v); }
     static float hertz(float x) { return 16 * std::pow(21357.f / 16, x); }
     float xAt(float hz) const { return graph.getX() + graph.getWidth() * std::log(hz / 16) / std::log(21357.f / 16); }
@@ -342,6 +387,7 @@ private:
 
     void timerCallback() override
     {
+        refreshChannel();
         for (int ch = 0; ch < 2; ++ch)
             peaks[ch] = std::max(peaks[ch] * .85f, display.channelPeak[ch].exchange(0, std::memory_order_relaxed));
         if (display.ready.load(std::memory_order_acquire))
@@ -362,6 +408,10 @@ private:
     std::array<juce::TextButton, 10> row;
     std::array<juce::ComboBox, 10> types;
     std::array<std::unique_ptr<State::ComboBoxAttachment>, 10> typeBinding;
+    bool editingRight = false;
+    juce::ComboBox channelMenu;
+    juce::TextButton copy;
+    std::unique_ptr<State::ComboBoxAttachment> channelBinding;
     std::vector<std::unique_ptr<Fader>> faders;
     std::vector<std::unique_ptr<Switch>> switches;
     juce::TextButton flat;

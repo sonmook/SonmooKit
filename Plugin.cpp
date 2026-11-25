@@ -35,32 +35,39 @@ State::ParameterLayout makeLayout()
     };
     if constexpr (effect == 0)
     {
-        add("time", "Time (ms)", 10, 2000, 375);
+        add("time", "Time (ms)", 1, 3500, 375);
         layout.add(std::make_unique<juce::AudioParameterChoice>(
             juce::ParameterID{"sync", 1}, "Tempo sync",
             juce::StringArray{"Off", "1/16", "1/8", "1/8 dotted", "1/4", "1/2", "1/1"}, 0));
-        add("feedback", "Feedback (%)", 0, 95, 32);
+        add("feedback", "Feedback (%)", 0, 200, 32);
         add("lowcut", "Low Cut (Hz)", 20, 2000, 120);
         add("highcut", "High Cut (Hz)", 500, 20000, 6500);
         layout.add(std::make_unique<juce::AudioParameterBool>(
             juce::ParameterID{"ping", 1}, "Ping-Pong", false));
         add("mix", "Mix (%)", 0, 100, 25);
+        add("modDepth", "Modulation Depth (%)", 0, 100, 0);
+        layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{"modRate", 1},
+            "Modulation Rate (Hz)", juce::NormalisableRange<float>(.1f, 6000.f, .01f, .25f), .1f));
+        add("outTrim", "Output (dB)", -18, 18, 0);
+        layout.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{"lofi", 1}, "LoFi", false));
     }
     else if constexpr (effect == 1)
     {
         add("threshold", "Threshold (dB)", -60, 0, -18);
-        add("ratio", "Ratio", 1, 20, 4);
-        add("attack", "Attack (ms)", 0.1f, 200, 10);
-        add("release", "Release (ms)", 5, 2000, 120);
+        add("ratio", "Ratio", .5f, 50, 4);
+        add("attack", "Attack (ms)", .5f, 500, 10);
+        add("release", "Release (ms)", 5, 5000, 120);
         add("knee", "Knee (dB)", 0, 24, 6);
-        add("makeup", "Makeup (dB)", -12, 24, 0);
+        add("makeup", "Makeup (dB)", -30, 30, 0);
         add("mix", "Mix (%)", 0, 100, 100);
+        layout.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{"arc", 1}, "Adaptive Release", false));
     }
     else if constexpr (effect == 2)
     {
         add("threshold", "Threshold (dB)", -36, 0, 0);
         add("ceiling", "Ceiling (dBFS)", -18, 0, -0.3f);
-        add("release", "Release (ms)", 5, 1000, 80);
+        add("release", "Release (ms)", .01f, 1000, 80);
+        layout.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{"arc", 1}, "Adaptive Release", false));
     }
     else if constexpr (effect == 3)
     {
@@ -191,10 +198,12 @@ public:
         activity.output.store(0);
         activity.reduction.store(0);
         cursor = hold = 0;
-        reductionDb = detectionEnvelope = driveBlend = 0;
+        reductionDb = detectionEnvelope = driveBlend = monitorEnvelope = releaseMemory = 0;
+        previousDriveInput = {};
         limiterGain = 1;
         humPhase = 0;
-        delay = 0;
+        delay = modPhase = 0;
+        lofiMemory = {};
         lowpass = {};
         bass = {};
         detectorHigh = {};
@@ -271,6 +280,11 @@ private:
         const float feedback = param("feedback") * 0.01f;
         const bool ping = channels == 2 && param("ping") > 0.5f;
         const float hp = pole(param("lowcut")), lp = pole(param("highcut"));
+        const float trim = juce::Decibels::decibelsToGain(param("outTrim"));
+        const double depth = param("modDepth") * .0001 * rate;
+        const double phaseStep = param("modRate") / rate;
+        const bool lofi = param("lofi") > .5f;
+        const float lofiPole = pole(3300.f);
         const int sync = std::clamp(int(param("sync")), 0, 6);
         double seconds = param("time") * 0.001;
         if (sync > 0)
@@ -290,7 +304,10 @@ private:
         for (int i = 0; i < audio.getNumSamples(); ++i)
         {
             delay += slew * (target - delay);
-            double read = cursor - delay;
+            const double offset = depth > 0 ? depth * std::sin(2 * juce::MathConstants<double>::pi * modPhase) : 0.;
+            modPhase += phaseStep;
+            modPhase -= std::floor(modPhase);
+            double read = cursor - std::clamp(delay + offset, 1., double(length - 2));
             if (read < 0) read += length;
             const int first = int(read);
             const int second = (first + 1) % length;
@@ -301,14 +318,17 @@ private:
                 const float tap = line[first] + fraction * (line[second] - line[first]);
                 bass[ch] += hp * (tap - bass[ch]);
                 lowpass[ch] += lp * (tap - bass[ch] - lowpass[ch]);
+                lofiMemory[ch] += lofiPole * (lowpass[ch] - lofiMemory[ch]);
             }
             const float mono = ping ? 0.5f * (samples[0][i] + samples[1][i]) : 0;
             for (int ch = 0; ch < channels; ++ch)
             {
                 const float dry = samples[ch][i];
                 const float send = ping ? (ch == 0 ? mono : 0) : dry;
-                ring[ch][cursor] = send + feedback * lowpass[ping ? 1 - ch : ch];
-                samples[ch][i] = dry + mix * (lowpass[ch] - dry);
+                const auto wet = [&](int channel) { return lofi ? std::round(lofiMemory[channel] * 2048.f) / 2048.f : lowpass[channel]; };
+                const float loop = feedback * wet(ping ? 1 - ch : ch);
+                ring[ch][cursor] = send + (feedback > 1.f ? 2.f * std::tanh(.5f * loop) : loop);
+                samples[ch][i] = trim * (dry + mix * (wet(ch) - dry));
             }
             cursor = (cursor + 1) % length;
         }
@@ -320,7 +340,10 @@ private:
         const int channels = audio.getNumChannels();
         const float threshold = param("threshold"), knee = param("knee");
         const float slope = 1 - 1 / param("ratio");
-        const float attack = decay(param("attack")), release = decay(param("release"));
+        const float releaseMs = param("release");
+        const float attack = decay(param("attack")), release = decay(releaseMs);
+        const float fastRelease = decay(releaseMs * .2f), memory = decay(250);
+        const bool adaptive = param("arc") > .5f;
         const float makeup = juce::Decibels::decibelsToGain(param("makeup"));
         const float mix = param("mix") * 0.01f;
         float maximumReduction = 0;
@@ -336,9 +359,11 @@ private:
                 const float offset = over + knee * .5f;
                 target = slope * offset * offset / (2 * knee);
             }
-            const float coefficient = target > reductionDb ? attack : release;
+            releaseMemory = std::abs(target) + memory * (releaseMemory - std::abs(target));
+            const float recovery = adaptive ? fastRelease + (release - fastRelease) * std::min(1.f, releaseMemory / 8.f) : release;
+            const float coefficient = std::abs(target) > std::abs(reductionDb) ? attack : recovery;
             reductionDb = target + coefficient * (reductionDb - target);
-            maximumReduction = std::max(maximumReduction, reductionDb);
+            maximumReduction = std::max(maximumReduction, std::abs(reductionDb));
             const float gain = 1 - mix + mix * makeup * juce::Decibels::decibelsToGain(-reductionDb);
             for (int ch = 0; ch < channels; ++ch)
                 samples[ch][i] *= gain;
@@ -354,7 +379,9 @@ private:
         const int channels = audio.getNumChannels();
         const float ceiling = juce::Decibels::decibelsToGain(param("ceiling"));
         const float drive = ceiling / juce::Decibels::decibelsToGain(param("threshold"));
-        const float release = decay(param("release"));
+        const float releaseMs = param("release");
+        const float release = decay(releaseMs), fastRelease = decay(releaseMs * .2f), memory = decay(250);
+        const bool adaptive = param("arc") > .5f;
         float minimumGain = 1;
         for (int i = 0; i < audio.getNumSamples(); ++i)
         {
@@ -365,6 +392,8 @@ private:
                 peak = std::max(peak, std::abs(ring[ch][cursor]));
             }
             const float target = peak > ceiling ? ceiling / peak : 1.0f;
+            releaseMemory = (1 - target) + memory * (releaseMemory - (1 - target));
+            const float recovery = adaptive ? fastRelease + (release - fastRelease) * std::min(1.f, 2 * releaseMemory) : release;
             if (target <= limiterGain && target < 1)
             {
                 limiterGain = target;
@@ -373,7 +402,7 @@ private:
             else if (hold > 0)
                 --hold;
             else
-                limiterGain = 1 + release * (limiterGain - 1);
+                limiterGain = 1 + recovery * (limiterGain - 1);
 
             cursor = (cursor + 1) % length;
             float delayedPeak = 0;
@@ -424,6 +453,9 @@ private:
             detectedPeak = std::max(detectedPeak, peak);
             detectionEnvelope = std::max(peak, detectionEnvelope * holdDecay);
             const float db = juce::Decibels::gainToDecibels(detectionEnvelope, -100.0f);
+            const float detected = db > threshold ? 1.f : 0.f;
+            const float monitorTime = detected > monitorEnvelope ? attack : release;
+            monitorEnvelope = detected + monitorTime * (monitorEnvelope - detected);
             const float target = std::clamp((db - threshold) * .8f, 0.0f, maximum);
             const float smoothing = target > reductionDb ? attack : release;
             reductionDb = target + smoothing * (reductionDb - target);
@@ -435,7 +467,7 @@ private:
                 const float dry = ring[ch][preRead ? next : cursor];
                 bass[ch] += split * (dry - bass[ch]);
                 const float removed = removedGain * (dry - splitMix * bass[ch]);
-                samples[ch][i] = audition ? removed : dry - removed;
+                samples[ch][i] = audition ? dry * monitorEnvelope : dry - removed;
             }
             cursor = next;
         }
@@ -460,7 +492,14 @@ private:
             for (int ch = 0; ch < audio.getNumChannels(); ++ch)
             {
                 const float dry = samples[ch][i];
-                const float shaped = std::tanh(dry * pregain) * compensation;
+                // Average the transfer over the sample interval to limit folded harmonics.
+                const float previous = previousDriveInput[ch] * pregain;
+                const float current = dry * pregain;
+                previousDriveInput[ch] = dry;
+                const auto integral = [] (float x) { return std::abs(x) + std::log1p(std::exp(-2.f * std::abs(x))); };
+                const float delta = current - previous;
+                const float shaped = compensation * (std::abs(delta) > .005f
+                    ? (integral(current) - integral(previous)) / delta : std::tanh(.5f * (current + previous)));
                 lowpass[ch] += rolloff * (shaped - lowpass[ch]);
                 samples[ch][i] = trim * (dry + amount * (lowpass[ch] - dry));
             }
@@ -480,8 +519,8 @@ private:
         const bool off = param("bypassComp") > .5f;
         const float threshold = all ? -23.f : -18.f + .55f * mode;
         const float slope = 1 - 1 / ratios[mode];
-        const float attackMs = .8f * std::pow(.025f, (param("attack") - 1) / 6);
-        const float releaseMs = 1100.f * std::pow(50.f / 1100.f, (param("release") - 1) / 6);
+        const float attackMs = std::pow(.025f, (param("attack") - 1) / 6);
+        const float releaseMs = 1000.f * std::pow(.05f, (param("release") - 1) / 6);
         const float attack = decay(attackMs);
         const float release = decay(releaseMs);
         const float slow = decay(releaseMs * 2.8f);
@@ -532,7 +571,9 @@ private:
     StereoArc arc;
 #endif
     Activity activity;
-    float blockReduction = 0, detectionEnvelope = 0, driveBlend = 0;
+    float blockReduction = 0, detectionEnvelope = 0, driveBlend = 0, monitorEnvelope = 0, releaseMemory = 0;
+    double modPhase = 0;
+    std::array<float, 2> lofiMemory{}, previousDriveInput{};
     std::array<float, 2> detectorLow{}, detectorHigh{};
     std::array<std::vector<float>, 2> ring;
     std::array<float, 2> lowpass{}, bass{};

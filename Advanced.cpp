@@ -59,22 +59,25 @@ State::ParameterLayout layout()
     {
         result.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{key, 1}, label, value));
     };
+    const auto addEqBand = [&](int i, bool right)
+    {
+        constexpr std::array<float, 10> centres{31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000};
+        const auto key = [=](const char* field) { return (right ? "right_" : "") + id(i, field); };
+        const auto prefix = juce::String(right ? "Right Band " : "Band ") + juce::String(i + 1) + " ";
+        toggle(key("on"), prefix + "Enabled", true);
+        add(key("freq"), prefix + "Frequency", 16, 21357, .1f, centres[i], 1000);
+        add(key("gain"), prefix + "Gain", -18, 18, .1f, 0);
+        add(key("q"), prefix + "Q", .5f, 100, .01f, 1, 2);
+        result.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{key("type"), 1},
+            prefix + "Type", juce::StringArray{"Bell","Low Shelf","High Shelf","Low Pass","High Pass","Proportional Q"}, 0));
+    };
     for (int i = 0; i < count; ++i)
     {
         const auto prefix = juce::String(isEqualiser ? "Band " : "Voice ") + juce::String(i + 1) + " ";
-        toggle(id(i, "on"), prefix + "Enabled", isEqualiser || i < 2);
-        if constexpr (isEqualiser)
-        {
-            constexpr std::array<float, 10> centres{31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000};
-            add(id(i, "freq"), prefix + "Frequency", 16, 21357, 0.1f, centres[i], 1000);
-            add(id(i, "gain"), prefix + "Gain", -18, 18, 0.1f, 0);
-            add(id(i, "q"), prefix + "Q", .5f, 100, .01f, 1, 2);
-            result.add(std::make_unique<juce::AudioParameterChoice>(
-                juce::ParameterID{id(i, "type"), 1}, prefix + "Type",
-                juce::StringArray{"Bell", "Low Shelf", "High Shelf", "Low Pass", "High Pass", "Proportional Q"}, 0));
-        }
+        if constexpr (isEqualiser) addEqBand(i, false);
         else
         {
+            toggle(id(i, "on"), prefix + "Enabled", i < 2);
             constexpr std::array<float, 4> delays{9.4f, 16, 23.7f, 21};
             add(id(i, "delay"), prefix + "Delay", 0, 100, .1f, delays[i]);
             add(id(i, "detune"), prefix + "Detune", -100, 100, 1, i % 2 == 0 ? -6 : 6);
@@ -93,6 +96,9 @@ State::ParameterLayout layout()
         add("inputR", "Right Input", -60, 0, .1f, 0);
         toggle("phaseL", "Left Polarity Invert", false);
         toggle("phaseR", "Right Polarity Invert", false);
+        result.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{"channelEdit", 1},
+            "Stereo Editing", juce::StringArray{"Linked", "Edit Left", "Edit Right"}, 0));
+        for (int i = 0; i < count; ++i) addEqBand(i, true);
     }
     else
     {
@@ -107,9 +113,14 @@ State::ParameterLayout layout()
         add("highShelfFreq", "High Shelf Frequency", 16, 21357, 1, 1306, 1000);
         add("directGain", "Direct Gain", -48, 0, .1f, 0);
         add("directPan", "Direct Pan", -45, 45, 1, 0);
-        add("fbCut", "Feedback High Pass", 16, 4000, 1, 80, 250);
+        add("fbCut", "Feedback High Pass", 16, 12000, 1, 16, 250);
         add("wetLow", "Voice Low Cut", 16, 1000, 1, 70, 150);
         add("wetHigh", "Voice High Cut", 1000, 21357, 1, 15000, 8000);
+        for (int group = 0; group < 2; ++group)
+            result.add(std::make_unique<juce::AudioParameterChoice>(
+                juce::ParameterID{group == 0 ? "source13" : "source24", 1},
+                group == 0 ? "Source Voices 1 and 3" : "Source Voices 2 and 4",
+                juce::StringArray{"Left", "Right", "L+R"}, group));
     }
     return result;
 }
@@ -125,7 +136,7 @@ Biquad filter(double rate, double f, double gain, double q, int type)
     const double s = std::sin(w), c = std::cos(w);
     const double a = std::pow(10., gain / 40);
     if (type == 5) q *= 1 + std::abs(gain) / 12;
-    const double alpha = s / (2 * q);
+    const double alpha = (isEqualiser && (type == 3 || type == 4)) ? s / std::sqrt(2.) : s / (2 * q);
     double b0, b1, b2, a0, a1, a2;
     if (type == 1 || type == 2)
     {
@@ -234,6 +245,13 @@ public:
         if constexpr (isEqualiser)
         {
             input = {state.getRawParameterValue("inputL"), state.getRawParameterValue("inputR")};
+            channelEdit = state.getRawParameterValue("channelEdit");
+            for (int i = 0; i < count; ++i)
+            {
+                const auto get = [&](const char* key) { return state.getRawParameterValue("right_" + id(i, key)); };
+                auto& p = rightBands[i];
+                p.on = get("on"); p.a = get("freq"); p.b = get("gain"); p.c = get("q"); p.mode = get("type");
+            }
             invert = {state.getRawParameterValue("phaseL"), state.getRawParameterValue("phaseR")};
         }
         else
@@ -241,6 +259,7 @@ public:
             directEnable = state.getRawParameterValue("direct");
             directGain = state.getRawParameterValue("directGain");
             directPan = state.getRawParameterValue("directPan");
+            voiceSources = {state.getRawParameterValue("source13"), state.getRawParameterValue("source24")};
             feedbackCut = state.getRawParameterValue("fbCut");
             lowCut = state.getRawParameterValue("wetLow");
             highCut = state.getRawParameterValue("wetHigh");
@@ -341,15 +360,16 @@ private:
     {
         using P = Parameters;
         const float gain = juce::Decibels::decibelsToGain(P::get(output));
-        std::array<Biquad, count> coefficients;
-        for (int i = 0; i < count; ++i)
-        {
-            const auto& p = params[i];
-            coefficients[i] = P::get(p.on) > .5f
-                ? filter(sampleRate, P::get(p.a), P::get(p.b), P::get(p.c), int(P::get(p.mode))) : Biquad{};
-        }
         for (int ch = 0; ch < audio.getNumChannels(); ++ch)
         {
+            const auto& bands = ch == 1 && P::get(channelEdit) > .5f ? rightBands : params;
+            std::array<Biquad, count> coefficients;
+            for (int i = 0; i < count; ++i)
+            {
+                const auto& p = bands[i];
+                coefficients[i] = P::get(p.on) > .5f
+                    ? filter(sampleRate, P::get(p.a), P::get(p.b), P::get(p.c), int(P::get(p.mode))) : Biquad{};
+            }
             auto* samples = audio.getWritePointer(ch);
             const float inputGain = (P::get(invert[ch]) > .5f ? -1.f : 1.f)
                 * juce::Decibels::decibelsToGain(P::get(input[ch]), -60.f);
@@ -399,8 +419,10 @@ private:
         const int length = int(voices[0].samples.size());
         const int inputs = getMainBusNumInputChannels(), outputs = getMainBusNumOutputChannels();
         const bool extended = P::get(lowRange) > .5f;
-        const double grain = sampleRate * (extended ? .08 : .04);
-        const int dryDelay = P::get(align) > .5f ? juce::roundToInt(grain * .5) : 0;
+        const double grain = sampleRate * (extended ? .048 : .014);
+        const std::array<int, 2> routing{int(P::get(voiceSources[0])), int(P::get(voiceSources[1]))};
+        const int voiceLatency = juce::roundToInt(grain * .5);
+        const int dryDelay = P::get(align) > .5f ? voiceLatency : 0;
         if (display.resetModulation.exchange(false, std::memory_order_acq_rel))
             for (auto& v : voices) v.lfoPhase = 0;
         std::array<Biquad, 2> shelves{};
@@ -442,7 +464,7 @@ private:
         {
             const float left = channels[0][n];
             const float right = inputs > 1 ? channels[1][n] : left;
-            const float mono = (left + right) * .5f;
+            
             const float dryPan = outputs == 1 ? 0.0f : pan;
             directLine[0][cursor] = left;
             directLine[1][cursor] = right;
@@ -455,10 +477,11 @@ private:
             {
                 auto& v = voices[i];
                 const auto& s = settings[i];
-                v.samples[cursor] = mono + v.feedback * s.feedback;
+                const std::array<float, 3> sources{left, right, .5f * (left + right)};
+                v.samples[cursor] = sources[routing[i % 2]] + v.feedback * s.feedback;
                 float tap;
                 if (std::abs(s.semitones) + std::abs(s.depth) < 1e-5)
-                    tap = delayTap(v, s.delay + dryDelay);
+                    tap = delayTap(v, s.delay + voiceLatency);
                 else
                 {
                     const double ratio = std::exp2((s.semitones + s.depth * std::sin(2 * pi * v.lfoPhase)) / 12);
@@ -487,13 +510,15 @@ private:
 
     State state;
     DisplayData display;
-    std::array<Parameters, count> params{};
+    std::array<Parameters, count> params{}, rightBands{};
+    std::atomic<float>* channelEdit{};
     std::array<std::atomic<float>*, count> voiceGain{};
     std::atomic<float>* output{};
     std::array<std::atomic<float>*, 2> input{}, invert{};
     std::atomic<float>* directEnable{};
     std::atomic<float>* directGain{};
     std::atomic<float>* directPan{};
+    std::array<std::atomic<float>*, 2> voiceSources{};
     std::atomic<float>* feedbackCut{};
     std::atomic<float>* lowCut{};
     std::atomic<float>* highCut{};

@@ -6,7 +6,7 @@ Projeto C++ com JUCE 8.0.6. Gera doze efeitos VST3 x64 independentes, com interf
 | --- | --- | --- |
 | [StereoEcho](#stereoecho) | H-Delay | Tempo em milissegundos ou sincronizado ao BPM do host, feedback, filtros, ping-pong e mix |
 | [SoftCompressor](#softcompressor) | Renaissance Compressor | Threshold, ratio, ataque, release, knee, makeup e mix paralelo. O detector de pico aplica o mesmo ganho aos dois canais |
-| [SibilanceControl](#sibilancecontrol) | Sibilance | Limiar, faixa de redução, largura da detecção, transição Wide/Split, audição do sinal removido, lookahead de 12 ms e histórico do detector |
+| [SibilanceControl](#sibilancecontrol) | Sibilance | Limiar, faixa de redução, largura da detecção, transição Wide/Split, audição das consoantes detectadas, lookahead de 12 ms e histórico do detector |
 | [DriveTone](#drivetone) | OneKnob Driver | Drive de 0 a 10, tonalidade, ajuste de saída e mix |
 | [PeakCeiling](#peakceiling) | L1 | Threshold, teto de pico de amostra em dBFS, release e lookahead fixo de 2 ms com latência reportada ao host |
 | [CurveTen](#curveten) | Q10 | Dez bandas, seis tipos de filtro, curva arrastável, espectro de saída e ganho global |
@@ -17,15 +17,17 @@ Projeto C++ com JUCE 8.0.6. Gera doze efeitos VST3 x64 independentes, com interf
 | [StereoArc](#stereoarc) | S1 Imager | Largura, rotação, assimetria, ganho, entrada L/R ou M/S, polaridade, troca de canais e medidores de pico |
 | [SonmooTune](#sonmootune) | Waves Tune Real-Time | Correção vocal por escala ou MIDI, tolerância, transições, vibrato, referência e teclado interativo |
 
+[Comparação dos dez efeitos com os manuais Waves e mudanças da versão 0.12.0](docs/revisao-0.12.0.md)
+
 ## Manuais ilustrados
 
 No FL Studio, abra o Mixer e carregue o efeito em um slot da pista que deseja processar. Na tabela acima, clique no nome do plugin para ir direto ao seu manual.
 
 ### StereoEcho
 
-**Delay sincronizado.** Para encaixar as repetições de uma voz no andamento da música, selecione **1/4** em **Tempo sync**. A 120 BPM, cada repetição fica a 500 ms da anterior. Para acertar o intervalo de ouvido, selecione **Off** e ajuste **Time** entre 10 e 2000 ms.
+**Delay sincronizado.** Para encaixar as repetições de uma voz no andamento da música, selecione **1/4** em **Tempo sync**. A 120 BPM, cada repetição fica a 500 ms da anterior. Para acertar o intervalo de ouvido, selecione **Off** e ajuste **Time** entre 1 e 3500 ms. Você também pode clicar duas vezes em **Tap** no ritmo desejado.
 
-**Feedback** controla quanto de cada repetição volta ao delay. **Low Cut** tira graves das repetições e **High Cut** suaviza seus agudos. Ative **Ping-pong** para alternar os ecos entre esquerda e direita. Em um insert, comece com **Mix** em 25%. Em um canal dedicado ao retorno, use 100% e regule o envio no Mixer.
+**Feedback** controla quanto de cada repetição volta ao delay. Acima de 100%, as repetições podem crescer. **Mod depth** e **Mod rate** variam o tempo do eco. **LoFi** reduz a definição das repetições e **Output** ajusta o ganho final. **Low Cut** tira graves das repetições e **High Cut** suaviza seus agudos. Ative **Ping-pong** para alternar os ecos entre esquerda e direita. Em um insert, comece com **Mix** em 25%. Em um canal dedicado ao retorno, use 100% e regule o envio no Mixer.
 
 ![Painel do StereoEcho](docs/imagens/StereoEcho.png)
 
@@ -33,7 +35,7 @@ No FL Studio, abra o Mixer e carregue o efeito em um slot da pista que deseja pr
 
 **Compressão de dinâmica.** Para nivelar uma voz, comece com **Ratio** em 4:1, **Attack** em 10 ms e **Release** em 120 ms. Baixe **Threshold** até o medidor **GR** indicar redução nas palavras mais fortes. Compare o nível de saída com o de entrada e ajuste **Makeup**.
 
-Um ataque mais longo deixa passar mais do início de cada som. **Release** controla quanto tempo o ganho leva para voltar. Aumentar **Knee** suaviza a entrada da compressão perto do limiar. Use **Mix** para combinar o sinal comprimido com o original. O detector aplica o mesmo ganho aos dois canais.
+Um ataque mais longo deixa passar mais do início de cada som. **Release** controla quanto tempo o ganho leva para voltar. Aumentar **Knee** suaviza a entrada da compressão perto do limiar. Use **Mix** para combinar o sinal comprimido com o original. Abaixo de 1:1, **Ratio** produz expansão. Ative **Adaptive release** para adaptar a recuperação ao sinal. O detector aplica o mesmo ganho aos dois canais.
 
 ![Painel do SoftCompressor](docs/imagens/SoftCompressor.png)
 
@@ -41,13 +43,13 @@ Um ataque mais longo deixa passar mais do início de cada som. **Release** contr
 
 **Limitador de picos.** Para segurar os picos de uma bateria, defina **Ceiling** como o nível máximo de saída desejado. Baixe **Threshold** até **GR** reagir às batidas mais fortes. Se a redução continuar entre batidas, encurte **Release** ou suba o limiar.
 
-**IN** e **OUT** mostram os níveis antes e depois do processamento. O teto é medido em picos de amostra, em dBFS. O limitador antecipa o áudio em 2 ms e informa esse atraso ao host para compensação.
+**IN** e **OUT** mostram os níveis antes e depois do processamento. **Adaptive release** adapta o retorno do ganho ao histórico dos picos. O teto é medido em picos de amostra, em dBFS. O limitador antecipa o áudio em 2 ms e informa esse atraso ao host para compensação.
 
 ![Painel do PeakCeiling](docs/imagens/PeakCeiling.png)
 
 ### SibilanceControl
 
-**Controle de sibilância.** Repita um trecho com sons de “s” e “ch”. Ative **Audition sibilance** para ouvir o que está sendo retirado. Ajuste **Detection Width** e **Threshold** até destacar essas consoantes, depois desligue a audição para avaliar a voz inteira.
+**Controle de sibilância.** Repita um trecho com sons de “s” e “ch”. Ative **Audition sibilance** para ouvir os trechos identificados pelo detector. Ajuste **Detection Width** e **Threshold** até destacar essas consoantes, depois desligue a audição para avaliar a voz inteira.
 
 **Range** limita a redução máxima em dB. Aproxime **Wide to Split** do lado Split para concentrar a redução na faixa detectada. No lado Wide, a atenuação atua sobre o sinal inteiro. Consulte o histórico para localizar os disparos. Ative **12 ms lookahead** quando precisar antecipar o começo das consoantes.
 
@@ -65,7 +67,7 @@ Um ataque mais longo deixa passar mais do início de cada som. **Release** contr
 
 **Equalizador de dez bandas.** Selecione um ponto no gráfico e arraste na horizontal para escolher a frequência e na vertical para ajustar o ganho. Use **Alt** ao arrastar para mudar **Q**. Dê dois cliques no ponto para alternar a banda e comparar o resultado.
 
-Na linha da banda, escolha **Bell** para trabalhar uma região, **Low Shelf** ou **High Shelf** para uma extremidade, e **High Pass** ou **Low Pass** para cortar graves ou agudos. **Proportional Q** oferece uma curva cuja largura depende do ganho. Ative **Spectrum** para acompanhar a saída. Os dois canais compartilham a equalização e têm ajustes de entrada e inversão de polaridade independentes.
+Na linha da banda, escolha **Bell** para trabalhar uma região, **Low Shelf** ou **High Shelf** para uma extremidade, e **High Pass** ou **Low Pass** para cortar graves ou agudos. **Proportional Q** oferece uma curva cuja largura depende do ganho. Ative **Spectrum** para acompanhar a saída. Os filtros de corte têm inclinação de 12 dB/oitava. **Linked** usa a mesma curva nos dois canais. Use **Edit Left** e **Edit Right** para trabalhar com curvas independentes. **Copy L to R** copia as dez bandas esquerdas para o banco direito.
 
 ![Painel do CurveTen](docs/imagens/CurveTen.png)
 
@@ -73,7 +75,7 @@ Na linha da banda, escolha **Bell** para trabalhar uma região, **Low Shelf** ou
 
 **Dobra de voz.** Para alargar uma voz principal, mantenha **Direct** ligado e use V1 e V2. Experimente delays de 10 e 20 ms, desafinações de −6 e +6 cents e panoramas opostos. Ajuste o ganho das duas cópias até que a voz principal continue em destaque.
 
-Cada linha controla uma das quatro vozes. **Feedback** cria repetições, **Octave** abaixa uma oitava e **Mod depth/rate** regulam a intensidade e a velocidade da modulação. Os três gráficos permitem ajustar panorama/ganho, delay/detune e a equalização das cópias. **Align dry** alinha o sinal direto e **Reset modulation** reinicia a modulação.
+Em estéreo, as vozes 1 e 3 recebem a entrada esquerda e as vozes 2 e 4, a direita. Cada linha controla uma das quatro vozes. **Feedback** cria repetições, **Octave** abaixa uma oitava e **Mod depth/rate** regulam a intensidade e a velocidade da modulação. Os três gráficos permitem ajustar panorama/ganho, delay/detune e a equalização das cópias. **Align dry** alinha o sinal direto e **Reset modulation** reinicia a modulação.
 
 ![Painel do VoiceStack](docs/imagens/VoiceStack.png)
 
@@ -81,7 +83,7 @@ Cada linha controla uma das quatro vozes. **Feedback** cria repetições, **Octa
 
 **Equalizador dinâmico.** Para atenuar uma ressonância só quando ela aparece, selecione uma banda **Bell**, ajuste a frequência e mantenha **Gain** em 0 dB. Coloque **Range** em −4 dB e baixe **Threshold** até a curva dinâmica se mover nas passagens fortes.
 
-**Attack** e **Release** controlam a entrada e a recuperação da ação. Escolha **Mid** para tratar o centro, **Side** para as laterais ou **Stereo** para ambos. **Split** concentra a detecção na banda e **Wide** usa o sinal de banda larga. Para disparar o efeito com outra pista, encaminhe-a ao sidechain no Mixer e escolha **External** na banda. Use **Listen to key** para conferir o que chega ao detector.
+Nos cortes HP e LP, escolha a inclinação de 6 a 24 dB por oitava. **Attack** e **Release** controlam a entrada e a recuperação da ação. Escolha **Mid** para tratar o centro, **Side** para as laterais ou **Stereo** para ambos. **Split** concentra a detecção na banda e **Wide** usa o sinal de banda larga. Para disparar o efeito com outra pista, encaminhe-a ao sidechain no Mixer e escolha **External** na banda. Use **Listen to key** para conferir o que chega ao detector.
 
 ![Painel do PulseEQ](docs/imagens/PulseEQ.png)
 
@@ -171,7 +173,7 @@ As quatro vozes ficam visíveis ao mesmo tempo. Os gráficos permitem arrastar p
 
 ## Versão 0.5.0
 
-CurveTen e VoiceStack são efeitos com algoritmos próprios. CurveTen aplica as mesmas bandas aos dois canais. VoiceStack aceita mono, estéreo e mono para estéreo; as vozes usam uma soma mono e o sinal direto preserva o estéreo.
+CurveTen e VoiceStack são efeitos com algoritmos próprios. CurveTen aplica as mesmas bandas aos dois canais. VoiceStack aceita mono, estéreo e mono para estéreo; na versão 0.5.0 as vozes usavam uma soma mono e o sinal direto preserva o estéreo.
 
 ## Interface 0.4.0
 

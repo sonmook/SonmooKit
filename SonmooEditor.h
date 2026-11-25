@@ -130,8 +130,38 @@ public:
             dial("mix", "Mix", " %");
             dial("lowcut", "Low Cut", " Hz", 0);
             dial("highcut", "High Cut", " Hz", 0);
+            dial("modDepth", "Mod depth", " %");
+            dial("modRate", "Mod rate", " Hz", 2);
+            dial("outTrim", "Output", " dB");
+            addToggle(preRead, preReadAttachment, "lofi", "LoFi");
             const auto* sync = static_cast<juce::AudioParameterChoice*>(state.getParameter("sync"));
             division.addItemList(sync->choices, 1);
+            tap.setButtonText("Tap");
+            tap.onClick = [this]
+            {
+                const auto now = juce::Time::getMillisecondCounterHiRes();
+                const auto interval = now - lastTap;
+                if (lastTap > 0 && interval >= 1 && interval <= 3500)
+                {
+                    if (state.getRawParameterValue("sync")->load() == 0)
+                        controls[0]->slider.setValue(interval, juce::sendNotificationSync);
+                    else
+                    {
+                        constexpr double beats[]{.25, .5, .75, 1., 2., 4.};
+                        const int index = division.getSelectedItemIndex() - 1;
+                        const double activeMs = levels.echoTimeMs.load();
+                        if (index >= 0 && index < 6 && activeMs > 0)
+                        {
+                            const double wanted = interval * beats[index] / activeMs;
+                            auto nearest = std::min_element(std::begin(beats), std::end(beats),
+                                [wanted](double a, double b) { return std::abs(a-wanted) < std::abs(b-wanted); });
+                            division.setSelectedItemIndex(1 + int(nearest - beats), juce::sendNotificationSync);
+                        }
+                    }
+                }
+                lastTap = now;
+            };
+            addAndMakeVisible(tap);
             division.setTooltip("Sync delay time to project tempo");
             division.setColour(juce::ComboBox::backgroundColourId, juce::Colour(panel));
             division.setColour(juce::ComboBox::outlineColourId, juce::Colour(track));
@@ -146,7 +176,8 @@ public:
         else if constexpr (effect == 1)
         {
             dial("threshold", "Threshold", " dB");
-            dial("ratio", "Ratio", ":1");
+            addToggle(ping, pingAttachment, "arc", "Adaptive release");
+            dial("ratio", "Ratio", ":1", 2);
             dial("attack", "Attack", " ms");
             dial("release", "Release", " ms");
             dial("knee", "Knee", " dB");
@@ -157,7 +188,8 @@ public:
         {
             dial("threshold", "Threshold", " dB");
             dial("ceiling", "Ceiling", " dBFS");
-            dial("release", "Release", " ms");
+            dial("release", "Release", " ms", 2);
+            addToggle(ping, pingAttachment, "arc", "Adaptive release");
         }
         else if constexpr (effect == 3)
         {
@@ -182,7 +214,7 @@ public:
             setSize(356, 482);
         }
         else if constexpr (effect == 0)
-            setSize(548, 369);
+            setSize(548, 490);
         else if constexpr (effect == 1 || effect == 2)
         {
             const int count = effect == 1 ? 1 : 2;
@@ -234,17 +266,22 @@ public:
             placeDial(0, 30, 149, 116, 126);
             for (int i = 1; i < 5; ++i)
                 placeDial(i, 169 + ((i - 1) % 2) * 114, 112 + ((i - 1) / 2) * 104, 108, 88);
-            division.setBounds(31, 319, 118, 26);
-            ping.setBounds(296, 319, 104, 26);
+            division.setBounds(31, 337, 118, 26);
+            for (int i = 0; i < 3; ++i) placeDial(5+i, 30+i*135, 376, 110, 90);
+            preRead.setBounds(434, 412, 94, 28);
+            tap.setBounds(170, 337, 90, 26);
+            ping.setBounds(296, 337, 104, 26);
         }
         if constexpr (effect == 1)
         {
+            ping.setBounds(156, 338, 160, 25);
             placeDial(0, 31, 102, 91, 235);
             for (int i = 1; i < 7; ++i)
                 placeDial(i, 156 + ((i - 1) % 3) * 82, 100 + ((i - 1) / 3) * 119, 80, 100);
         }
         if constexpr (effect == 2)
         {
+            ping.setBounds(205, 289, 156, 24);
             placeDial(0, 23, 94, 87, 203);
             placeDial(1, 115, 94, 87, 203);
             placeDial(2, 212, 135, 88, 117);
@@ -328,7 +365,7 @@ private:
         verticalMeter(g, 470, 113, 50, 167, "OUT", shownOutput, false);
         g.setColour(juce::Colour(muted));
         g.setFont(juce::FontOptions(12.0f));
-        g.drawText("Tempo sync", 31, 296, 118, 19, juce::Justification::centredLeft);
+        g.drawText("Tempo sync", 31, 314, 118, 19, juce::Justification::centredLeft);
     }
 
     void paintDynamics(juce::Graphics& g)
@@ -338,7 +375,7 @@ private:
         const int width = compressor ? 42 : 40;
         const int height = compressor ? 178 : 148;
         verticalMeter(g, x, 122, width, height, "IN", shownInput, false);
-        verticalMeter(g, x + width, 122, width, height, "GR", shownReduction, true);
+        verticalMeter(g, x + width, 122, width, height, compressor && state.getRawParameterValue("ratio")->load() < 1.f ? "EXP" : "GR", shownReduction, true);
         verticalMeter(g, x + width * 2, 122, width, height, "OUT", shownOutput, false);
     }
 
@@ -470,6 +507,8 @@ private:
     Activity& levels;
     DialStyle style;
     std::vector<std::unique_ptr<Control>> controls;
+    juce::TextButton tap;
+    double lastTap = 0;
     juce::ComboBox division;
     juce::ToggleButton ping, preRead;
     std::unique_ptr<State::ComboBoxAttachment> syncAttachment;

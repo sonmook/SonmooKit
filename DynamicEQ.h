@@ -53,6 +53,11 @@ State::ParameterLayout dynamicLayout()
     check("autoRelease", "Adaptive Release", true);
     number("mix", "Mix", 0, 100, .1f, 100);
     number("output", "Output", -24, 12, .1f, 0);
+    for (auto id : {"hpSlope", "lpSlope"})
+        result.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{id, 1},
+            juce::String(id) == "hpSlope" ? "High Pass Slope" : "Low Pass Slope",
+            juce::StringArray{"6 dB/oct", "12 dB/oct", "18 dB/oct", "24 dB/oct"}, 1));
+    choice("spectrumSource", "Spectrum Source", {"L+R", "Left", "Right", "Side"});
     return result;
 }
 
@@ -112,6 +117,23 @@ Biquad keyFilter(double rate, double hz, double q, int shape)
     const double w = 2 * pi * std::min(hz, rate * .485) / rate;
     const double a = std::sin(w) / (2 * q);
     return {a / (1 + a), 0, -a / (1 + a), -2 * std::cos(w) / (1 + a), (1 - a) / (1 + a)};
+}
+
+std::array<Biquad, 2> cutStages(double rate, double hz, int order, bool highPass)
+{
+    std::array<Biquad, 2> stages{};
+    const double k = std::tan(pi * std::min(hz, rate * .485) / rate);
+    if (order % 2 == 1)
+    {
+        const double b = (highPass ? 1. : k) / (1. + k);
+        stages[0] = {b, highPass ? -b : b, 0., (k - 1.) / (k + 1.), 0.};
+    }
+    for (int i = 0; i < order / 2; ++i)
+    {
+        const double q = .5 / std::sin(pi * (2 * i + 1) / (2 * order));
+        stages[order % 2 + i] = filter(rate, hz, 0, q, highPass ? 4 : 3);
+    }
+    return stages;
 }
 
 #include "DynamicEditor.h"
@@ -186,9 +208,9 @@ public:
         const float mix = g(0) * .01f;
         const float output = juce::Decibels::decibelsToGain(g(1));
         const bool adaptive = g(2) > .5f;
-        const std::array<Biquad, 2> cut{
-            g(3) > .5f ? filter(rate, g(4), 0, .7071, 4) : Biquad{},
-            g(5) > .5f ? filter(rate, g(6), 0, .7071, 3) : Biquad{}};
+        const int spectrumSource = int(g(9));
+        const auto hp = cutStages(rate, g(4), g(3) > .5f ? int(g(7)) + 1 : 0, true);
+        const auto lp = cutStages(rate, g(6), g(5) > .5f ? int(g(8)) + 1 : 0, false);
         std::array<Config, dynamicBands> bands;
         for (int i = 0; i < dynamicBands; ++i)
         {
@@ -258,13 +280,16 @@ public:
             }
             for (int ch = 0; ch < channels; ++ch)
             {
-                const float shaped = passes[ch][1].process(passes[ch][0].process(wet[ch], cut[0]), cut[1]);
+                float shaped = wet[ch];
+                for (int s = 0; s < 2; ++s) shaped = passes[ch][s].process(shaped, hp[s]);
+                for (int s = 0; s < 2; ++s) shaped = passes[ch][2+s].process(shaped, lp[s]);
                 const float result = output * (solo >= 0 ? keyListen[ch] : raw[ch] + mix * (shaped - raw[ch]));
                 dst[ch][sample] = result;
                 peaks[ch] = std::max(peaks[ch], std::abs(result));
             }
             const float left = dst[0][sample], right = stereo ? dst[1][sample] : left;
-            display.push(std::abs(left) >= std::abs(right) ? left : right);
+            const std::array<float, 4> spectrumInputs{.5f * (left + right), left, right, .5f * (left - right)};
+            display.push(spectrumInputs[spectrumSource]);
             tick = (tick + 1) % 16;
         }
 
@@ -312,13 +337,13 @@ private:
     };
     float coefficient(float ms) const { return float(std::exp(-16000. / (rate * ms))); }
 
-    static constexpr std::array<const char*, 7> globalKeys{"mix", "output", "autoRelease", "hp", "hpFreq", "lp", "lpFreq"};
+    static constexpr std::array<const char*, 10> globalKeys{"mix", "output", "autoRelease", "hp", "hpFreq", "lp", "lpFreq", "hpSlope", "lpSlope", "spectrumSource"};
     State state;
     DynamicDisplay display;
     std::array<ParametersByBand, dynamicBands> controls{};
-    std::array<std::atomic<float>*, 7> globals{};
+    std::array<std::atomic<float>*, 10> globals{};
     std::array<Running, dynamicBands> running{};
-    std::array<std::array<BiquadMemory, 2>, 2> passes{};
+    std::array<std::array<BiquadMemory, 4>, 2> passes{};
     double rate = 48000;
     int tick = 0;
 };

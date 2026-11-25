@@ -122,7 +122,7 @@ private:
     float detect()
     {
         static constexpr int low[]{55,65,90,125,145,175,55},high[]{350,460,620,800,960,1250,1250};
-        int r=(int)value(Range),first=jmax(2,(int)(detectorRate/high[r])),last=jmin(150,(int)std::ceil(detectorRate/low[r]));
+        int r=(int)value(Range),first=jmax(2,(int)(detectorRate/high[6])),last=jmin(150,(int)std::ceil(detectorRate/low[r]));
         std::array<float,152> dif{}, raw{};
         auto at=[&](int age){return window[(pos-1-age+1024)&511];};
         float energy=0;
@@ -140,7 +140,7 @@ private:
                 const float a=raw[k-1], b=raw[k], c=raw[k+1];
                 const double offset=jlimit(-.5,.5,.5*(a-c)/jmax(1e-8f,a+c-2*b));
                 const float hz=(float)(detectorRate/(k+offset));
-                if(hz<low[r]*.98 || hz>high[r]*1.02) return 0;
+                if(hz<low[r] || hz>high[r]) return 0;
                 return hz;
             }
         }
@@ -221,7 +221,7 @@ private:
         if(!validBefore) glide=0;
         else if(previousTarget!=target) glide=12*std::log2(ratio)-desired;
         glide*=std::exp(-dt/jmax(.1,transition));
-        const bool bypassNote=!forced && route(target)==3;
+        const bool bypassNote=!forced && route(jlimit(0,127,roundToInt(centreNote)))==3;
         double delta=bypassNote ? 0. : desired+glide;
         if(bypassNote) voiced=false;
         goal=std::exp2(jlimit(-12.,12.,delta*value(Amount)*.01)/12);

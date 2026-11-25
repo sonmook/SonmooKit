@@ -28,6 +28,14 @@ public:
         slider("highShelfGain", "High shelf", " dB", 698, 291, 81);
         slider("highShelfFreq", "High freq", " Hz", 784, 291, 89);
         slider("output", "Output", " dB", 818, 523, 87);
+        for (int i = 0; i < 2; ++i)
+        {
+            auto& menu = sources[i];
+            menu.addItemList({"Left", "Right", "L+R"}, 1);
+            menu.setBounds(271 + 100*i, 30, 89, 26);
+            addAndMakeVisible(menu);
+            sourceLinks[i] = std::make_unique<State::ComboBoxAttachment>(state, i == 0 ? "source13" : "source24", menu);
+        }
         toggle("align", "Align dry", 486, 22, 100);
         toggle("lowRange", "Extended range", 601, 22, 137);
         toggle("lowShelfOn", "L", 644, 81, 44);
@@ -54,6 +62,8 @@ public:
         g.setColour(ink);
         g.setFont(juce::FontOptions(29.f, juce::Font::bold));
         g.drawText("VoiceStack", 23, 29, 300, 37, juce::Justification::centredLeft);
+        caption(g, "IN 1 / 3", 271, 7, 89);
+        caption(g, "IN 2 / 4", 371, 7, 89);
         drawPosition(g);
         drawTiming(g);
         drawShelf(g);
@@ -360,6 +370,8 @@ private:
     DisplayData& display;
     std::vector<std::unique_ptr<SliderBinding>> sliders;
     std::vector<std::unique_ptr<ToggleBinding>> toggles;
+    std::array<juce::ComboBox, 2> sources;
+    std::array<std::unique_ptr<State::ComboBoxAttachment>, 2> sourceLinks;
     juce::TextButton reset;
     const juce::Point<float> origin{162, 221};
     const juce::Rectangle<float> timingArea{349, 111, 234, 94}, shelfArea{651, 111, 242, 94};

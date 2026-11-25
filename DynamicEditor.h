@@ -14,8 +14,13 @@ public:
             addAndMakeVisible(tabs[i]);
         }
         configureToggle(hp, "HP", {38, 435, 59, 24});
-        configureToggle(lp, "LP", {227, 435, 59, 24});
+        configureToggle(lp, "LP", {345, 435, 59, 24});
         configureToggle(autoRelease, "Adaptive release", {710, 435, 146, 24});
+        spectrumSource.addItemList({"L+R", "Left", "Right", "Side"}, 1);
+        spectrumSource.setBounds(696, 23, 98, 27);
+        spectrumSource.setTooltip("Spectrum source");
+        addAndMakeVisible(spectrumSource);
+        spectrumLink = std::make_unique<State::ComboBoxAttachment>(state, "spectrumSource", spectrumSource);
         configureToggle(spectrumButton, "Spectrum", {808, 24, 109, 26});
         spectrumButton.setToggleState(true, juce::dontSendNotification);
         spectrumButton.onClick = [this] { display.listening.store(spectrumButton.getToggleState()); };
@@ -26,7 +31,14 @@ public:
         lpLink = std::make_unique<State::ButtonAttachment>(state, "lp", lp);
         autoLink = std::make_unique<State::ButtonAttachment>(state, "autoRelease", autoRelease);
         control(hpFreq, "HP cutoff", {93, 434, 112, 28}, false);
-        control(lpFreq, "LP cutoff", {282, 434, 115, 28}, false);
+        control(lpFreq, "LP cutoff", {400, 434, 115, 28}, false);
+        for (int i = 0; i < 2; ++i)
+        {
+            slopes[i].addItemList({"6 dB/oct", "12 dB/oct", "18 dB/oct", "24 dB/oct"}, 1);
+            slopes[i].setBounds(i == 0 ? 208 : 515, 435, 100, 26);
+            addAndMakeVisible(slopes[i]);
+            slopeLinks[i] = std::make_unique<State::ComboBoxAttachment>(state, i == 0 ? "hpSlope" : "lpSlope", slopes[i]);
+        }
         control(mix, "Mix", {538, 380, 133, 34}, false);
         control(output, "Output", {725, 380, 146, 34}, false);
         hpFreqLink = std::make_unique<State::SliderAttachment>(state, "hpFreq", hpFreq);
@@ -216,7 +228,7 @@ private:
                 plotBins[i] = {phase, phase * phase, int(bin), float(bin - int(bin))};
             }
         }
-        std::array<Biquad, dynamicBands + 2> baseline{}, live{};
+        std::array<Biquad, dynamicBands + 4> baseline{}, live{};
         bool hasSide = false;
         for (int i = 0; i < dynamicBands; ++i)
         {
@@ -233,8 +245,12 @@ private:
         for (int i = 0; i < 2; ++i)
         {
             if (dynamicValue(state, i == 0 ? "hp" : "lp") > .5f)
-                baseline[dynamicBands + i] = live[dynamicBands + i] =
-                    filter(sr, dynamicValue(state, i == 0 ? "hpFreq" : "lpFreq"), 0, .7071, i == 0 ? 4 : 3);
+            {
+                const auto stages = cutStages(sr, dynamicValue(state, i == 0 ? "hpFreq" : "lpFreq"),
+                    int(dynamicValue(state, i == 0 ? "hpSlope" : "lpSlope")) + 1, i == 0);
+                for (int j = 0; j < 2; ++j)
+                    baseline[dynamicBands + 2*i + j] = live[dynamicBands + 2*i + j] = stages[j];
+            }
         }
         juce::Path staticCurve, dynamicCurve, spectrumCurve;
         for (size_t i = 0; i < plotBins.size(); ++i)
@@ -331,6 +347,10 @@ private:
     std::array<juce::Slider, 7> knobs;
     std::array<juce::ComboBox, 4> menus;
     juce::ToggleButton hp, lp, autoRelease, spectrumButton, enabled, solo;
+    juce::ComboBox spectrumSource;
+    std::unique_ptr<State::ComboBoxAttachment> spectrumLink;
+    std::array<juce::ComboBox, 2> slopes;
+    std::array<std::unique_ptr<State::ComboBoxAttachment>, 2> slopeLinks;
     juce::Slider hpFreq, lpFreq, mix, output;
     std::array<std::unique_ptr<State::SliderAttachment>, 7> knobLinks;
     std::array<std::unique_ptr<State::ComboBoxAttachment>, 4> menuLinks;
