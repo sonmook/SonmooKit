@@ -1,6 +1,6 @@
 # SonmooKit para FL Studio
 
-Projeto C++ com JUCE 8.0.6. Gera onze efeitos VST3 x64 independentes, com interface própria, medidores em tempo real, parâmetros automatizáveis e restauração de estado no projeto.
+Projeto C++ com JUCE 8.0.6. Gera doze efeitos VST3 x64 independentes, com interface própria, medidores em tempo real, parâmetros automatizáveis e restauração de estado no projeto.
 
 | Efeito | Referência funcional | Controles |
 | --- | --- | --- |
@@ -14,7 +14,16 @@ Projeto C++ com JUCE 8.0.6. Gera onze efeitos VST3 x64 independentes, com interf
 | PulseEQ | F6 | Seis bandas dinâmicas, cortes, analisador e sidechain por banda |
 | FETStrike | CLA-76 | Compressor FET com Input, Output, tempos, quatro ratios, All e medidor de agulha |
 | OptoLevel 2A | CLA-2A | Gain, Peak Reduction, Compress/Limit, HiFreq, medidor VU, Analog, Auto makeup, Mix e Trim |
+| StereoArc | S1 Imager | Largura, rotação, assimetria, ganho, entrada L/R ou M/S, polaridade, troca de canais e medidores de pico |
 | SonmooTune | Waves Tune Real-Time | Correção vocal por escala ou MIDI, tolerância, transições, vibrato, referência e teclado interativo |
+
+## StereoArc 0.11.0
+
+Processador de imagem estéreo com entrada e saída de dois canais. Em **Width**, 0 soma os canais em mono, 1 preserva a largura original e 3 triplica a componente lateral. **Rotation** desloca a imagem inteira. **Asymmetry** altera as laterais e mantém uma fonte mono no centro.
+
+Arraste no gráfico para ajustar rotação e ganho. Com **Alt**, o mesmo gesto ajusta assimetria e largura. O gráfico representa a configuração da imagem. Os medidores mostram os picos do áudio em L/R ou M/S. Use **Reset image** para centralizar e restaurar a largura original.
+
+Implementação própria baseada nos controles descritos no [manual Waves S1](https://assets.wavescdn.com/pdf/plugins/s1-stereo-imager.pdf).
 
 ## OptoLevel 2A 0.10.1
 
@@ -74,7 +83,7 @@ Requer Visual Studio 2022 com **Desktop development with C++**, Windows SDK, Git
 
 ```powershell
 cmake -S . -B build -G "Visual Studio 17 2022" -A x64
-cmake --build build --config Release --target StereoEcho_VST3 SoftCompressor_VST3 PeakCeiling_VST3 SibilanceControl_VST3 DriveTone_VST3 CurveTen_VST3 VoiceStack_VST3 PulseEQ_VST3 FETStrike_VST3 PitchPilot_VST3 OptoLevel2A_VST3
+cmake --build build --config Release --target StereoEcho_VST3 SoftCompressor_VST3 PeakCeiling_VST3 SibilanceControl_VST3 DriveTone_VST3 CurveTen_VST3 VoiceStack_VST3 PulseEQ_VST3 FETStrike_VST3 PitchPilot_VST3 OptoLevel2A_VST3 StereoArc_VST3
 ```
 
 Os bundles completos ficam em `build/<Efeito>_artefacts/Release/VST3/`. Copie cada pasta `.vst3` inteira para `C:\Program Files\Common Files\VST3`. No FL Studio, abra **Options > Manage plugins**, ative **Verify plugins** e faça a busca. Carregue os efeitos em slots do Mixer. Consulte o [manual de instalação de plugins do FL Studio](https://www.image-line.com/fl-studio-learning/fl-studio-online-manual/html/basics_externalplugins.htm).

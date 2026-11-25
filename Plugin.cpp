@@ -15,6 +15,8 @@ using State = juce::AudioProcessorValueTreeState;
 #include "SonmooEditor.h"
 #if EFFECT_KIND == 10
 #include "OptoLevel.h"
+#elif EFFECT_KIND == 11
+#include "StereoArc.h"
 #endif
 #if EFFECT_KIND == 8
 namespace {
@@ -78,6 +80,12 @@ State::ParameterLayout makeLayout()
         add("trim", "Output Trim (dB)", -24, 12, 0);
         add("mix", "Mix (%)", 0, 100, 100);
     }
+    else if constexpr (effect == 11)
+    {
+#if EFFECT_KIND == 11
+        return StereoArc::layout();
+#endif
+    }
     else if constexpr (effect == 10)
     {
 #if EFFECT_KIND == 10
@@ -128,6 +136,8 @@ public:
         return new FetEditor(*this, state, activity);
 #elif EFFECT_KIND == 10
         return new OptoPanel(*this, state, optical);
+#elif EFFECT_KIND == 11
+        return new ArcPanel(*this, state, arc);
 #else
         return new SonmooEditor(*this, state, activity);
 #endif
@@ -141,6 +151,8 @@ public:
     bool isBusesLayoutSupported(const BusesLayout& layout) const override
     {
         const auto channels = layout.getMainOutputChannelSet();
+        if constexpr (effect == 11)
+            return channels == juce::AudioChannelSet::stereo() && layout.getMainInputChannelSet() == channels;
         return layout.getMainInputChannelSet() == channels &&
                (channels == juce::AudioChannelSet::mono() ||
                 channels == juce::AudioChannelSet::stereo());
@@ -151,6 +163,8 @@ public:
         rate = std::max(1.0, sampleRate);
 #if EFFECT_KIND == 10
         optical.prepare(rate, state);
+#elif EFFECT_KIND == 11
+        arc.prepare(rate, state);
 #endif
         lookahead = std::max(1, juce::roundToInt(rate * 0.002));
         if constexpr (effect == 0 || effect == 2 || effect == 3)
@@ -170,6 +184,8 @@ public:
             std::fill(line.begin(), line.end(), 0.0f);
 #if EFFECT_KIND == 10
         optical.reset();
+#elif EFFECT_KIND == 11
+        arc.reset();
 #endif
         activity.input.store(0);
         activity.output.store(0);
@@ -192,6 +208,9 @@ public:
         juce::ScopedNoDenormals guard;
 #if EFFECT_KIND == 10
         optical.process(audio);
+        return;
+#elif EFFECT_KIND == 11
+        arc.process(audio);
         return;
 #endif
         updatePeak(activity.input, signalPeak(audio));
@@ -509,6 +528,8 @@ private:
     State state;
 #if EFFECT_KIND == 10
     OptoLevel optical;
+#elif EFFECT_KIND == 11
+    StereoArc arc;
 #endif
     Activity activity;
     float blockReduction = 0, detectionEnvelope = 0, driveBlend = 0;

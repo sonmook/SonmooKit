@@ -9,6 +9,8 @@ function(add_effect target code kind category)
         set(effect_options NEEDS_MIDI_INPUT TRUE PRODUCT_NAME "SonmooTune" VERSION 0.9.0)
     elseif(kind EQUAL 10)
         set(effect_options VERSION 0.10.1)
+    elseif(kind EQUAL 11)
+        set(effect_options VERSION 0.11.0)
     endif()
     juce_add_plugin(${target}
         COMPANY_NAME "SonmooKit"
@@ -43,3 +45,4 @@ add_effect(PulseEQ Plsq 7 EQ)
 add_effect(FETStrike Ftst 8 Dynamics)
 add_effect(PitchPilot PtPl 9 PitchShift)
 add_effect(OptoLevel2A Ol2a 10 Dynamics)
+add_effect(StereoArc Star 11 Spatial)
