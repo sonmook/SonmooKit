@@ -27,5 +27,5 @@ Para executar os ensaios no VST3 compilado, acrescente a opção abaixo e indiqu
 ```powershell
 cmake -S . -B build -DSONMOOKIT_BUILD_MACRO_CHECK=ON
 cmake --build build --config Release --target MacroCheck AirLift_VST3
-.\build\Release\MacroCheck.exe ".\build\AirLift_artefacts\Release\VST3\AirLift.vst3"
+.\build\Release\MacroCheck.exe ".\build\AirLift_artefacts\Release\VST3\Dial Bright.vst3"
 ```

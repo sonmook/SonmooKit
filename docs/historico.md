@@ -4,7 +4,7 @@
 
 ## Dial 0.13.2
 
-Os oito efeitos receberam nomes com o prefixo Dial no Mixer e nos painéis. Os nomes das pastas VST3 e os identificadores dos efeitos e parâmetros foram preservados. [Nomes anteriores e atuais](serie-um-controle.md)
+Os oito efeitos receberam nomes com o prefixo Dial no Mixer e nos painéis. As pastas VST3 também usam o prefixo Dial. Os identificadores dos efeitos e parâmetros foram preservados. [Nomes anteriores e atuais](serie-um-controle.md)
 
 ## Série de um controle 0.13.0
 

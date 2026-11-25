@@ -1,17 +1,17 @@
 # Dial · SonmooKit 0.13.2
 
-Os oito efeitos da série aparecem com o prefixo **Dial** no host. Na atualização, substitua as oito pastas .vst3 de mesmo nome e refaça a busca com a verificação dos plugins ativada. Carregue cada VST3 em um **insert do Mixer**. O controle principal vai de 0 a 10. Dial Filter abre em 10, com o filtro totalmente aberto. Os demais começam em zero. No Dial Drive, mantenha Tone e Output Trim em zero e Mix em 100% para trabalhar só com Drive.
+Os oito efeitos da série aparecem com o prefixo **Dial** no host. Na atualização, mova as versões com nome antigo para um backup fora da pasta VST3, copie as novas pastas Dial e refaça a busca com a verificação dos plugins ativada. Carregue cada VST3 em um **insert do Mixer**. O controle principal vai de 0 a 10. Dial Filter abre em 10, com o filtro totalmente aberto. Os demais começam em zero. No Dial Drive, mantenha Tone e Output Trim em zero e Mix em 100% para trabalhar só com Drive.
 
-| Nome no Mixer | Nome da pasta VST3 | Referência | Função da macro |
-| --- | --- | --- | --- |
-| [Dial Bright](manuais/AirLift.md) | AirLift.vst3 | [Brighter](https://www.waves.com/plugins/oneknob-brighter) | Brilho progressivo |
-| [Dial Bass](manuais/BassBody.md) | BassBody.vst3 | [Phatter](https://www.waves.com/plugins/oneknob-phatter) | Reforço de graves |
-| [Dial Filter](manuais/SweepTone.md) | SweepTone.vst3 | [Filter](https://www.waves.com/plugins/oneknob-filter) | Filtro ressonante |
-| [Dial Press](manuais/DrumPress.md) | DrumPress.vst3 | [Pressure](https://www.waves.com/plugins/oneknob-pressure) | Compressão paralela |
-| [Dial Lift](manuais/LevelLift.md) | LevelLift.vst3 | [Louder](https://www.waves.com/plugins/oneknob-louder) | Elevação de nível |
-| [Dial Pump](manuais/BeatDip.md) | BeatDip.vst3 | [Pumper](https://www.waves.com/plugins/oneknob-pumper) | Pulsação sincronizada |
-| [Dial Verb](manuais/RoomBloom.md) | RoomBloom.vst3 | [Wetter](https://www.waves.com/plugins/oneknob-wetter) | Ambiência e reverb |
-| [Dial Drive](manuais/DriveTone.md) | DriveTone.vst3 | [Driver](https://www.waves.com/plugins/oneknob-driver) | Overdrive com filtragem dos agudos |
+| Nome no Mixer | Pasta VST3 atual | Pasta anterior | Referência | Função da macro |
+| --- | --- | --- | --- | --- |
+| [Dial Bright](manuais/AirLift.md) | Dial Bright.vst3 | AirLift.vst3 | [Brighter](https://www.waves.com/plugins/oneknob-brighter) | Brilho progressivo |
+| [Dial Bass](manuais/BassBody.md) | Dial Bass.vst3 | BassBody.vst3 | [Phatter](https://www.waves.com/plugins/oneknob-phatter) | Reforço de graves |
+| [Dial Filter](manuais/SweepTone.md) | Dial Filter.vst3 | SweepTone.vst3 | [Filter](https://www.waves.com/plugins/oneknob-filter) | Filtro ressonante |
+| [Dial Press](manuais/DrumPress.md) | Dial Press.vst3 | DrumPress.vst3 | [Pressure](https://www.waves.com/plugins/oneknob-pressure) | Compressão paralela |
+| [Dial Lift](manuais/LevelLift.md) | Dial Lift.vst3 | LevelLift.vst3 | [Louder](https://www.waves.com/plugins/oneknob-louder) | Elevação de nível |
+| [Dial Pump](manuais/BeatDip.md) | Dial Pump.vst3 | BeatDip.vst3 | [Pumper](https://www.waves.com/plugins/oneknob-pumper) | Pulsação sincronizada |
+| [Dial Verb](manuais/RoomBloom.md) | Dial Verb.vst3 | RoomBloom.vst3 | [Wetter](https://www.waves.com/plugins/oneknob-wetter) | Ambiência e reverb |
+| [Dial Drive](manuais/DriveTone.md) | Dial Drive.vst3 | DriveTone.vst3 | [Driver](https://www.waves.com/plugins/oneknob-driver) | Overdrive com filtragem dos agudos |
 
 ## Documentação consultada
 

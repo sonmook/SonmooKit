@@ -26,4 +26,4 @@ Para ouvir o que a saturação acrescenta, use a mesma passagem de baixo em loop
 
 ## Uso na série de um controle
 
-Para usar somente Drive, comece com **Tone em 0%, Output Trim em 0 dB e Mix em 100%**. O Dial Drive 0.13.2 atualiza o DriveTone da coleção base e usa a mesma pasta DriveTone.vst3. [Guia da série](../serie-um-controle.md) · [Manual oficial da série Waves](https://assets.wavescdn.com/pdf/plugins/oneknob-series.pdf)
+Para usar somente Drive, comece com **Tone em 0%, Output Trim em 0 dB e Mix em 100%**. O Dial Drive 0.13.2 atualiza o DriveTone da coleção base e passa a usar a pasta Dial Drive.vst3. [Guia da série](../serie-um-controle.md) · [Manual oficial da série Waves](https://assets.wavescdn.com/pdf/plugins/oneknob-series.pdf)

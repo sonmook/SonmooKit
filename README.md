@@ -1,6 +1,6 @@
 # SonmooKit para FL Studio
 
-Coleção de **19 efeitos VST3 x64 para Windows**, com controles automatizáveis e ajustes salvos no projeto. A coleção base 0.12.1 reúne 12 efeitos. O pacote Dial 0.13.2 traz oito efeitos de um controle, incluindo o antigo DriveTone. Procure por **Dial** no gerenciador de plugins. Os dois pacotes usam a pasta `SonmooKit`.
+Coleção de **19 efeitos VST3 x64 para Windows**, com controles automatizáveis e ajustes salvos no projeto. A coleção base 0.12.1 reúne 12 efeitos. O pacote Dial 0.13.2 traz oito efeitos de um controle, incluindo o antigo DriveTone. Procure por **Dial** no gerenciador de plugins. Os dois pacotes usam a pasta `SonmooKit`. Ao atualizar a série Dial, mova os oito efeitos de nome antigo para um backup fora da pasta VST3 antes de copiar as novas pastas. Consulte a [tabela de nomes anteriores e atuais](docs/serie-um-controle.md).
 
 [Série de um controle](docs/serie-um-controle.md) · [Instalação](#instalação) · [Manuais ilustrados](#manuais-ilustrados) · [Compilação e testes](docs/compilacao.md) · [Histórico de versões](docs/historico.md)
 

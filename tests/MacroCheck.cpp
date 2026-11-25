@@ -14,13 +14,13 @@ int main(int argc,char** argv){
     if(argc!=2)return 2;
     ScopedJuceInitialiser_GUI gui; VST3PluginFormat fmt; OwnedArray<PluginDescription> ds;
     fmt.findAllTypesForFile(ds,argv[1]); if(ds.size()!=1)return 3;
-    const String name=File(argv[1]).getFileNameWithoutExtension();
+    const String name=ds[0]->name;
     String err;Clock clock; auto p=fmt.createInstanceFromDescription(*ds[0],48000,128,err);
     if(!p){std::cerr<<err;return 4;}p->setPlayHead(&clock);
     auto parameter=[&](String key){for(auto* v:p->getParameters())if(v->getName(128)==key)return v;
         throw std::runtime_error(("Missing "+key).toStdString());};
-    const String knob = name=="AirLift"?"Air":name=="BassBody"?"Body":name=="SweepTone"?"Cutoff":
-        name=="DrumPress"?"Pressure":name=="LevelLift"?"Level":name=="BeatDip"?"Depth":name=="RoomBloom"?"Space":"Drive";
+    const String knob = name=="Dial Bright"?"Air":name=="Dial Bass"?"Body":name=="Dial Filter"?"Cutoff":
+        name=="Dial Press"?"Pressure":name=="Dial Lift"?"Level":name=="Dial Pump"?"Depth":name=="Dial Verb"?"Space":"Drive";
     auto* main=parameter(knob); auto choose=[&](String key,String choice){auto* a=parameter(key);a->setValueNotifyingHost(a->getValueForText(choice));};
     for(double sr:{44100.,48000.,96000.}){
         clock.sr=sr; const int block=sr==44100?63:sr==48000?128:513;
@@ -43,11 +43,11 @@ int main(int argc,char** argv){
                 }
             }s.rms=std::sqrt(wet/jmax(raw,1e-18));return s;
         };
-        const float neutral=name=="SweepTone"?1.f:0.f;
+        const float neutral=name=="Dial Filter"?1.f:0.f;
         main->setValueNotifyingHost(neutral);
         auto dry=render(523,.13f);
         bool ok=dry.diff<.00002;
-        main->setValueNotifyingHost(name=="SweepTone"?.3f:1.f);
+        main->setValueNotifyingHost(name=="Dial Filter"?.3f:1.f);
         render(523,.13f);
         MemoryBlock state;p->getStateInformation(state);float saved=main->getValue();
         main->setValueNotifyingHost(neutral);render(523,.13f);p->setStateInformation(state.getData(),int(state.getSize()));
@@ -55,18 +55,18 @@ int main(int argc,char** argv){
         ok=ok && restored.diff>.00001;
         if(!ok)std::cerr<<"stored "<<saved<<" reported "<<main->getValue()<<" restored diff "<<restored.diff<<std::endl;
         double a=0,bval=0;
-        if(name=="AirLift"||name=="BassBody"){
+        if(name=="Dial Bright"||name=="Dial Bass"){
             a=render(60,.1f).rms;bval=render(12000,.1f).rms;
-            ok &= name=="AirLift"? bval>a*2 : a>bval*2;
-        }else if(name=="SweepTone"){
+            ok &= name=="Dial Bright"? bval>a*2 : a>bval*2;
+        }else if(name=="Dial Filter"){
             a=render(60,.1f).rms;bval=render(8000,.1f).rms;ok &= a>bval*8;
             main->setValueNotifyingHost(.5f);choose("Resonance","None");a=render(770,.08f).rms;
             choose("Resonance","High");bval=render(770,.08f).rms;ok &= bval>a*2;
-        }else if(name=="DrumPress"||name=="LevelLift"){
+        }else if(name=="Dial Press"||name=="Dial Lift"){
             a=render(220,.01f).rms;bval=render(220,.8f).rms;ok &= a>bval*2;
-            if(name=="DrumPress"){choose("Input","Pad -6 dB");auto pad=render(220,.01f);
+            if(name=="Dial Press"){choose("Input","Pad -6 dB");auto pad=render(220,.01f);
                 choose("Input","Boost +6 dB");auto boost=render(220,.01f);ok &= boost.rms>pad.rms*1.1;}
-        }else if(name=="RoomBloom"){
+        }else if(name=="Dial Verb"){
             auto tail=render(0,.5f,true);a=tail.tail;ok &= a>.00001;
             auto buses=p->getBusesLayout();buses.getChannelSet(true,0)=AudioChannelSet::mono();
             p->releaseResources();
@@ -84,7 +84,7 @@ int main(int argc,char** argv){
                 }
             }
             ok &= leftTail>1.e-6 && rightTail>1.e-6 && width>1.e-6;
-        }else if(name=="BeatDip"){
+        }else if(name=="Dial Pump"){
             choose("Rate","1/4");choose("Offset","0");clock.bpm=120;
             auto rms=render(210,.3f).rms;ok &= rms>.3 && rms<.9;
             auto at=[&](int64_t cursor){clock.sample=cursor;b.setSize(2,block,false,false,true);
