@@ -2,6 +2,10 @@
 
 [← Voltar ao README](../README.md)
 
+## Série de um controle 0.13.0
+
+Sete VST3 independentes acrescentam brilho, graves, filtragem ressonante, compressão paralela, elevação de nível, bombeamento sincronizado e ambiência. O pacote inclui o DriveTone 0.12.0. [Mapa da série e manuais](serie-um-controle.md)
+
 ## Coleção 0.12.1
 
 A revisão visual separa rótulos, botões e valores no StereoEcho, SoftCompressor, PeakCeiling e SibilanceControl, reposiciona a leitura do medidor do FETStrike e mostra nos gráficos do VoiceStack as vozes ativas. No PulseEQ, os seletores HP e LP ganharam espaço em relação aos controles de frequência. Os outros cinco efeitos acompanham a coleção em suas versões anteriores.
