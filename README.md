@@ -4,18 +4,118 @@ Projeto C++ com JUCE 8.0.6. Gera doze efeitos VST3 x64 independentes, com interf
 
 | Efeito | Referência funcional | Controles |
 | --- | --- | --- |
-| StereoEcho | H-Delay | Tempo em milissegundos ou sincronizado ao BPM do host, feedback, filtros, ping-pong e mix |
-| SoftCompressor | Renaissance Compressor | Threshold, ratio, ataque, release, knee, makeup e mix paralelo. O detector de pico aplica o mesmo ganho aos dois canais |
-| SibilanceControl | Sibilance | Limiar, faixa de redução, largura da detecção, transição Wide/Split, audição do sinal removido, lookahead de 12 ms e histórico do detector |
-| DriveTone | OneKnob Driver | Drive de 0 a 10, tonalidade, ajuste de saída e mix |
-| PeakCeiling | L1 | Threshold, teto de pico de amostra em dBFS, release e lookahead fixo de 2 ms com latência reportada ao host |
-| CurveTen | Q10 | Dez bandas, seis tipos de filtro, curva arrastável, espectro de saída e ganho global |
-| VoiceStack | Doubler | Quatro vozes com ganho, pan, delay, detune, feedback, oitava e modulação por voz |
-| PulseEQ | F6 | Seis bandas dinâmicas, cortes, analisador e sidechain por banda |
-| FETStrike | CLA-76 | Compressor FET com Input, Output, tempos, quatro ratios, All e medidor de agulha |
-| OptoLevel 2A | CLA-2A | Gain, Peak Reduction, Compress/Limit, HiFreq, medidor VU, Analog, Auto makeup, Mix e Trim |
-| StereoArc | S1 Imager | Largura, rotação, assimetria, ganho, entrada L/R ou M/S, polaridade, troca de canais e medidores de pico |
-| SonmooTune | Waves Tune Real-Time | Correção vocal por escala ou MIDI, tolerância, transições, vibrato, referência e teclado interativo |
+| [StereoEcho](#stereoecho) | H-Delay | Tempo em milissegundos ou sincronizado ao BPM do host, feedback, filtros, ping-pong e mix |
+| [SoftCompressor](#softcompressor) | Renaissance Compressor | Threshold, ratio, ataque, release, knee, makeup e mix paralelo. O detector de pico aplica o mesmo ganho aos dois canais |
+| [SibilanceControl](#sibilancecontrol) | Sibilance | Limiar, faixa de redução, largura da detecção, transição Wide/Split, audição do sinal removido, lookahead de 12 ms e histórico do detector |
+| [DriveTone](#drivetone) | OneKnob Driver | Drive de 0 a 10, tonalidade, ajuste de saída e mix |
+| [PeakCeiling](#peakceiling) | L1 | Threshold, teto de pico de amostra em dBFS, release e lookahead fixo de 2 ms com latência reportada ao host |
+| [CurveTen](#curveten) | Q10 | Dez bandas, seis tipos de filtro, curva arrastável, espectro de saída e ganho global |
+| [VoiceStack](#voicestack) | Doubler | Quatro vozes com ganho, pan, delay, detune, feedback, oitava e modulação por voz |
+| [PulseEQ](#pulseeq) | F6 | Seis bandas dinâmicas, cortes, analisador e sidechain por banda |
+| [FETStrike](#fetstrike) | CLA-76 | Compressor FET com Input, Output, tempos, quatro ratios, All e medidor de agulha |
+| [OptoLevel 2A](#optolevel-2a) | CLA-2A | Gain, Peak Reduction, Compress/Limit, HiFreq, medidor VU, Analog, Auto makeup, Mix e Trim |
+| [StereoArc](#stereoarc) | S1 Imager | Largura, rotação, assimetria, ganho, entrada L/R ou M/S, polaridade, troca de canais e medidores de pico |
+| [SonmooTune](#sonmootune) | Waves Tune Real-Time | Correção vocal por escala ou MIDI, tolerância, transições, vibrato, referência e teclado interativo |
+
+## Manuais ilustrados
+
+No FL Studio, abra o Mixer e carregue o efeito em um slot da pista que deseja processar. Na tabela acima, clique no nome do plugin para ir direto ao seu manual.
+
+### StereoEcho
+
+**Delay sincronizado.** Para encaixar as repetições de uma voz no andamento da música, selecione **1/4** em **Tempo sync**. A 120 BPM, cada repetição fica a 500 ms da anterior. Para acertar o intervalo de ouvido, selecione **Off** e ajuste **Time** entre 10 e 2000 ms.
+
+**Feedback** controla quanto de cada repetição volta ao delay. **Low Cut** tira graves das repetições e **High Cut** suaviza seus agudos. Ative **Ping-pong** para alternar os ecos entre esquerda e direita. Em um insert, comece com **Mix** em 25%. Em um canal dedicado ao retorno, use 100% e regule o envio no Mixer.
+
+![Painel do StereoEcho](docs/imagens/StereoEcho.png)
+
+### SoftCompressor
+
+**Compressão de dinâmica.** Para nivelar uma voz, comece com **Ratio** em 4:1, **Attack** em 10 ms e **Release** em 120 ms. Baixe **Threshold** até o medidor **GR** indicar redução nas palavras mais fortes. Compare o nível de saída com o de entrada e ajuste **Makeup**.
+
+Um ataque mais longo deixa passar mais do início de cada som. **Release** controla quanto tempo o ganho leva para voltar. Aumentar **Knee** suaviza a entrada da compressão perto do limiar. Use **Mix** para combinar o sinal comprimido com o original. O detector aplica o mesmo ganho aos dois canais.
+
+![Painel do SoftCompressor](docs/imagens/SoftCompressor.png)
+
+### PeakCeiling
+
+**Limitador de picos.** Para segurar os picos de uma bateria, defina **Ceiling** como o nível máximo de saída desejado. Baixe **Threshold** até **GR** reagir às batidas mais fortes. Se a redução continuar entre batidas, encurte **Release** ou suba o limiar.
+
+**IN** e **OUT** mostram os níveis antes e depois do processamento. O teto é medido em picos de amostra, em dBFS. O limitador antecipa o áudio em 2 ms e informa esse atraso ao host para compensação.
+
+![Painel do PeakCeiling](docs/imagens/PeakCeiling.png)
+
+### SibilanceControl
+
+**Controle de sibilância.** Repita um trecho com sons de “s” e “ch”. Ative **Audition sibilance** para ouvir o que está sendo retirado. Ajuste **Detection Width** e **Threshold** até destacar essas consoantes, depois desligue a audição para avaliar a voz inteira.
+
+**Range** limita a redução máxima em dB. Aproxime **Wide to Split** do lado Split para concentrar a redução na faixa detectada. No lado Wide, a atenuação atua sobre o sinal inteiro. Consulte o histórico para localizar os disparos. Ative **12 ms lookahead** quando precisar antecipar o começo das consoantes.
+
+![Painel do SibilanceControl](docs/imagens/SibilanceControl.png)
+
+### DriveTone
+
+**Saturação.** Repita um trecho de baixo ou bateria e suba **Drive** a partir de zero. Quando a textura aparecer, use **Output Trim** para comparar o efeito ligado e desligado em volumes parecidos.
+
+**Drive** vai de 0 a 10. **Tone** ajusta o brilho, e **Mix** dosa a presença da saturação. Para preservar o ataque do instrumento, experimente reduzir **Mix** depois de escolher a intensidade do drive. Os indicadores **IN** e **OUT** ajudam a acompanhar a mudança de nível.
+
+![Painel do DriveTone](docs/imagens/DriveTone.png)
+
+### CurveTen
+
+**Equalizador de dez bandas.** Selecione um ponto no gráfico e arraste na horizontal para escolher a frequência e na vertical para ajustar o ganho. Use **Alt** ao arrastar para mudar **Q**. Dê dois cliques no ponto para alternar a banda e comparar o resultado.
+
+Na linha da banda, escolha **Bell** para trabalhar uma região, **Low Shelf** ou **High Shelf** para uma extremidade, e **High Pass** ou **Low Pass** para cortar graves ou agudos. **Proportional Q** oferece uma curva cuja largura depende do ganho. Ative **Spectrum** para acompanhar a saída. Os dois canais compartilham a equalização e têm ajustes de entrada e inversão de polaridade independentes.
+
+![Painel do CurveTen](docs/imagens/CurveTen.png)
+
+### VoiceStack
+
+**Dobra de voz.** Para alargar uma voz principal, mantenha **Direct** ligado e use V1 e V2. Experimente delays de 10 e 20 ms, desafinações de −6 e +6 cents e panoramas opostos. Ajuste o ganho das duas cópias até que a voz principal continue em destaque.
+
+Cada linha controla uma das quatro vozes. **Feedback** cria repetições, **Octave** abaixa uma oitava e **Mod depth/rate** regulam a intensidade e a velocidade da modulação. Os três gráficos permitem ajustar panorama/ganho, delay/detune e a equalização das cópias. **Align dry** alinha o sinal direto e **Reset modulation** reinicia a modulação.
+
+![Painel do VoiceStack](docs/imagens/VoiceStack.png)
+
+### PulseEQ
+
+**Equalizador dinâmico.** Para atenuar uma ressonância só quando ela aparece, selecione uma banda **Bell**, ajuste a frequência e mantenha **Gain** em 0 dB. Coloque **Range** em −4 dB e baixe **Threshold** até a curva dinâmica se mover nas passagens fortes.
+
+**Attack** e **Release** controlam a entrada e a recuperação da ação. Escolha **Mid** para tratar o centro, **Side** para as laterais ou **Stereo** para ambos. **Split** concentra a detecção na banda e **Wide** usa o sinal de banda larga. Para disparar o efeito com outra pista, encaminhe-a ao sidechain no Mixer e escolha **External** na banda. Use **Listen to key** para conferir o que chega ao detector.
+
+![Painel do PulseEQ](docs/imagens/PulseEQ.png)
+
+### FETStrike
+
+**Compressor FET.** Selecione **4:1**, ponha o medidor em **GR** e suba **Input** até a agulha responder aos picos. Compense o volume com **Output**. Em **Attack** e **Release**, 1 é o ajuste mais lento e 7 o mais rápido.
+
+Experimente **8:1**, **12:1**, **20:1** ou **All** para mudar a compressão. **Smooth/Bright** seleciona o caráter. **Analog** adiciona hum de 50 ou 60 Hz. **Auto makeup** compensa ganho automaticamente, **Mix** faz compressão paralela e **Trim** ajusta a saída final. Use **IN/OUT** para comparar os níveis e **Comp off** para desligar a etapa de compressão.
+
+![Painel do FETStrike](docs/imagens/FETStrike.png)
+
+### OptoLevel 2A
+
+**Compressor óptico.** Em uma voz com frases de intensidades diferentes, selecione **Compress** e deixe o medidor em **GR**. Suba **Peak Reduction** até a agulha acompanhar as sílabas mais fortes. Ajuste **Gain** para igualar o volume percebido. O ganho unitário fica próximo de 32,28.
+
+**Limit** intensifica a redução. **HiFreq** em 100 deixa o detector plano. Reduza esse valor se os graves estiverem acionando compressão demais. Alterne o VU entre entrada, redução e saída. **Analog**, **Auto makeup**, **Mix** e **Trim** controlam hum, compensação automática, mistura paralela e nível final.
+
+![Painel do OptoLevel 2A](docs/imagens/OptoLevel2A.png)
+
+### SonmooTune
+
+**Correção de afinação vocal.** Use uma voz isolada. Escolha a extensão vocal, a tônica e a escala da música. Ligue **Correction** e ajuste sua intensidade. Reduza **Speed** para corrigir mais rápido e aumente **Transition** para suavizar as passagens entre notas. O visor permite comparar entrada e alvo.
+
+Em **Edit scale**, clique nas teclas para incluir ou excluir notas. Com **Group octaves**, a edição vale em todas as oitavas. **Reference tone** toca uma referência e **Hold target** permite segurar o alvo. Para usar o Piano Roll, ative **MIDI target** e envie as notas por um MIDI Out ligado à porta de entrada do wrapper. Ajuste a preservação de formantes e o vibrato ouvindo as vogais sustentadas.
+
+![Painel do SonmooTune](docs/imagens/SonmooTune.png)
+
+### StereoArc
+
+**Imagem estéreo.** Para abrir um instrumento estéreo, mantenha a entrada em **L/R**, comece com **Width** em 1 e aumente aos poucos. Em 0, a saída fica mono. Em 3, a componente lateral é triplicada. Confira o resultado também em mono.
+
+Arraste no gráfico para ajustar **Rotation** e ganho. Com **Alt**, o gesto controla **Asymmetry** e largura. Rotation move a imagem inteira, enquanto Asymmetry permite ajustar as laterais mantendo uma fonte mono centralizada. Selecione entrada **M/S** para decodificar material gravado em Mid/Side. O seletor dos medidores muda apenas a leitura. **Reset image** restaura largura, rotação e assimetria.
+
+![Painel do StereoArc](docs/imagens/StereoArc.png)
 
 ## StereoArc 0.11.0
 
