@@ -1,10 +1,10 @@
-# DrumPress
+# Dial Press
 
 [← Catálogo SonmooKit](../../README.md#manuais-ilustrados) · [Guia da série e referências](../serie-um-controle.md)
 
 **Compressão paralela.** Combina a fonte direta com uma parcela comprimida e saturada. A macro aprofunda a compressão, aumenta a proporção processada e acrescenta caráter nos ajustes altos. Os canais compartilham o detector.
 
-![Painel do DrumPress](../imagens/DrumPress.png)
+![Painel do Dial Press](../imagens/DrumPress.png)
 
 ## Controles
 

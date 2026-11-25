@@ -14,7 +14,7 @@ int main(int argc,char** argv){
     if(argc!=2)return 2;
     ScopedJuceInitialiser_GUI gui; VST3PluginFormat fmt; OwnedArray<PluginDescription> ds;
     fmt.findAllTypesForFile(ds,argv[1]); if(ds.size()!=1)return 3;
-    const String name=ds[0]->name;
+    const String name=File(argv[1]).getFileNameWithoutExtension();
     String err;Clock clock; auto p=fmt.createInstanceFromDescription(*ds[0],48000,128,err);
     if(!p){std::cerr<<err;return 4;}p->setPlayHead(&clock);
     auto parameter=[&](String key){for(auto* v:p->getParameters())if(v->getName(128)==key)return v;

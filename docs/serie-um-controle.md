@@ -1,17 +1,17 @@
-# Série de um controle · SonmooKit 0.13.0
+# Dial · SonmooKit 0.13.2
 
-O pacote da série reúne sete novos efeitos e o DriveTone 0.12.0, já presente na coleção. Carregue cada VST3 em um **insert do Mixer**. O controle principal vai de 0 a 10. SweepTone abre em 10, com o filtro totalmente aberto. Os demais começam em zero. No DriveTone, mantenha Tone e Output Trim em zero e Mix em 100% para trabalhar só com Drive.
+Os oito efeitos da série aparecem com o prefixo **Dial** no host. Na atualização, substitua as oito pastas .vst3 de mesmo nome e refaça a busca com a verificação dos plugins ativada. Carregue cada VST3 em um **insert do Mixer**. O controle principal vai de 0 a 10. Dial Filter abre em 10, com o filtro totalmente aberto. Os demais começam em zero. No Dial Drive, mantenha Tone e Output Trim em zero e Mix em 100% para trabalhar só com Drive.
 
-| Efeito SonmooKit | Referência | Função da macro |
-| --- | --- | --- |
-| [AirLift](manuais/AirLift.md) | [Brighter](https://www.waves.com/plugins/oneknob-brighter) | Brilho progressivo |
-| [BassBody](manuais/BassBody.md) | [Phatter](https://www.waves.com/plugins/oneknob-phatter) | Reforço de graves |
-| [SweepTone](manuais/SweepTone.md) | [Filter](https://www.waves.com/plugins/oneknob-filter) | Filtro ressonante |
-| [DrumPress](manuais/DrumPress.md) | [Pressure](https://www.waves.com/plugins/oneknob-pressure) | Compressão paralela |
-| [LevelLift](manuais/LevelLift.md) | [Louder](https://www.waves.com/plugins/oneknob-louder) | Elevação de nível |
-| [BeatDip](manuais/BeatDip.md) | [Pumper](https://www.waves.com/plugins/oneknob-pumper) | Pulsação sincronizada |
-| [RoomBloom](manuais/RoomBloom.md) | [Wetter](https://www.waves.com/plugins/oneknob-wetter) | Ambiência e reverb |
-| [DriveTone](manuais/DriveTone.md) | [Driver](https://www.waves.com/plugins/oneknob-driver) | Overdrive com filtragem dos agudos |
+| Nome no Mixer | Nome da pasta VST3 | Referência | Função da macro |
+| --- | --- | --- | --- |
+| [Dial Bright](manuais/AirLift.md) | AirLift.vst3 | [Brighter](https://www.waves.com/plugins/oneknob-brighter) | Brilho progressivo |
+| [Dial Bass](manuais/BassBody.md) | BassBody.vst3 | [Phatter](https://www.waves.com/plugins/oneknob-phatter) | Reforço de graves |
+| [Dial Filter](manuais/SweepTone.md) | SweepTone.vst3 | [Filter](https://www.waves.com/plugins/oneknob-filter) | Filtro ressonante |
+| [Dial Press](manuais/DrumPress.md) | DrumPress.vst3 | [Pressure](https://www.waves.com/plugins/oneknob-pressure) | Compressão paralela |
+| [Dial Lift](manuais/LevelLift.md) | LevelLift.vst3 | [Louder](https://www.waves.com/plugins/oneknob-louder) | Elevação de nível |
+| [Dial Pump](manuais/BeatDip.md) | BeatDip.vst3 | [Pumper](https://www.waves.com/plugins/oneknob-pumper) | Pulsação sincronizada |
+| [Dial Verb](manuais/RoomBloom.md) | RoomBloom.vst3 | [Wetter](https://www.waves.com/plugins/oneknob-wetter) | Ambiência e reverb |
+| [Dial Drive](manuais/DriveTone.md) | DriveTone.vst3 | [Driver](https://www.waves.com/plugins/oneknob-driver) | Overdrive com filtragem dos agudos |
 
 ## Documentação consultada
 
@@ -25,6 +25,6 @@ Os controles e o uso musical seguem as referências. As curvas de equalização 
 
 ## Verificação dos VST3
 
-Os oito efeitos passaram por 24 testes, combinando 44,1 kHz com blocos de 63 amostras, 48 kHz com 128 e 96 kHz com 513. Em cada configuração conferimos o sinal na posição neutra, a recuperação do ajuste salvo e o processamento com a macro ativa. A 48 kHz, com o controle no máximo, o AirLift acrescentou cerca de 13,4 dB a 12 kHz e o BassBody acrescentou 13,7 dB a 60 Hz. O LevelLift chegou a 24 dB de ganho no sinal fraco. Também verificamos a ressonância do SweepTone, os níveis de entrada do DrumPress, a saturação do DriveTone, a sincronização do BeatDip e a cauda estéreo do RoomBloom com entrada mono.
+Os oito efeitos passaram por 24 testes, combinando 44,1 kHz com blocos de 63 amostras, 48 kHz com 128 e 96 kHz com 513. Em cada configuração conferimos o sinal na posição neutra, a recuperação do ajuste salvo e o processamento com a macro ativa. A 48 kHz, com o controle no máximo, o Dial Bright acrescentou cerca de 13,4 dB a 12 kHz e o Dial Bass acrescentou 13,7 dB a 60 Hz. O Dial Lift chegou a 24 dB de ganho no sinal fraco. Também verificamos a ressonância do Dial Filter, os níveis de entrada do Dial Press, a saturação do Dial Drive, a sincronização do Dial Pump e a cauda estéreo do Dial Verb com entrada mono.
 
 Os testes usaram um host VST3 de bancada. A tentativa de comparação direta com a Waves V17 parou na inicialização do WaveShell, antes de obter áudio de referência. As medidas acima descrevem apenas a série SonmooKit.

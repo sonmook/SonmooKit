@@ -1,10 +1,10 @@
-# LevelLift
+# Dial Lift
 
 [← Catálogo SonmooKit](../../README.md#manuais-ilustrados) · [Guia da série e referências](../serie-um-controle.md)
 
 **Elevação de nível.** Eleva trechos de nível baixo com ganho dependente do detector estéreo. O ganho calculado chega a 24 dB em sinais fracos. A parcela processada passa por limitação de pico de amostra.
 
-![Painel do LevelLift](../imagens/LevelLift.png)
+![Painel do Dial Lift](../imagens/LevelLift.png)
 
 ## Controles
 

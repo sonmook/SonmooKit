@@ -1,10 +1,10 @@
-# RoomBloom
+# Dial Verb
 
 [← Catálogo SonmooKit](../../README.md#manuais-ilustrados) · [Guia da série e referências](../serie-um-controle.md)
 
 **Ambiência e reverb.** Combina o som direto com uma reverberação algorítmica. A macro aumenta a presença e a sustentação da cauda e suaviza os agudos à medida que o espaço cresce.
 
-![Painel do RoomBloom](../imagens/RoomBloom.png)
+![Painel do Dial Verb](../imagens/RoomBloom.png)
 
 ## Controles
 

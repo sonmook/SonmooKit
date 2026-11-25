@@ -422,7 +422,7 @@ private:
         SonmooBrand::draw(g, 43, 20, 23);
         g.setColour(juce::Colour(ink));
         g.setFont(juce::FontOptions(31.0f, juce::Font::bold));
-        g.drawText("DriveTone", 43, 41, 260, 38, juce::Justification::centredLeft);
+        g.drawFittedText(JucePlugin_Name, 43, 41, 285, 38, juce::Justification::centredLeft, 1, 0.8f);
         g.setColour(juce::Colour(0xff211c23));
         g.fillRoundedRectangle(20, 320, 316, 42, 7);
         meter(g, 328, "IN", shownInput, false);

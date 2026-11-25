@@ -1,10 +1,10 @@
-# SweepTone
+# Dial Filter
 
 [← Catálogo SonmooKit](../../README.md#manuais-ilustrados) · [Guia da série e referências](../serie-um-controle.md)
 
 **Filtro ressonante.** Controla um passa-baixas em escala logarítmica. Fechar o controle retira agudos. Perto de 10, a transição traz de volta o som direto até a posição aberta.
 
-![Painel do SweepTone](../imagens/SweepTone.png)
+![Painel do Dial Filter](../imagens/SweepTone.png)
 
 ## Controles
 

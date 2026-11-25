@@ -49,7 +49,7 @@ public:
         g.setGradientFill({Colour(0xff20313b),0,0,Colour(0xff0e151c),336,380,false});g.fillAll();
         SonmooBrand::draw(g,18,12,21);
         g.setColour(Colours::white);g.setFont(FontOptions(30.f,Font::bold));
-        g.drawText(p.getName(),16,39,304,39,Justification::centred);
+        g.drawFittedText(p.getName(),12,39,312,39,Justification::centred,1,0.75f);
         g.setColour(accent());g.setFont(FontOptions(14.f,Font::bold));g.drawText(label,20,82,296,20,Justification::centred);
         for(int i=0;i<2;++i)if(menus[i].isVisible()){
             g.setColour(Colour(0xffbdcbd3));g.setFont(13.f);

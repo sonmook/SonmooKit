@@ -1,10 +1,10 @@
-# BassBody
+# Dial Bass
 
 [← Catálogo SonmooKit](../../README.md#manuais-ilustrados) · [Guia da série e referências](../serie-um-controle.md)
 
 **Reforço de graves.** Reforça a região grave com uma prateleira cuja frequência e ganho variam juntos. A intensidade máxima amplia a região trabalhada em direção aos graves médios.
 
-![Painel do BassBody](../imagens/BassBody.png)
+![Painel do Dial Bass](../imagens/BassBody.png)
 
 ## Controles
 

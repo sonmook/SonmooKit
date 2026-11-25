@@ -1,10 +1,10 @@
-# AirLift
+# Dial Bright
 
 [← Catálogo SonmooKit](../../README.md#manuais-ilustrados) · [Guia da série e referências](../serie-um-controle.md)
 
 **Brilho progressivo.** Eleva as frequências altas. Conforme o controle sobe, a região de transição se desloca dos médios-agudos em direção ao ar da gravação.
 
-![Painel do AirLift](../imagens/AirLift.png)
+![Painel do Dial Bright](../imagens/AirLift.png)
 
 ## Controles
 

@@ -1,6 +1,6 @@
 # SonmooKit para FL Studio
 
-Coleção de **19 efeitos VST3 x64 para Windows**, com controles automatizáveis e ajustes salvos no projeto. A coleção base 0.12.1 reúne 12 efeitos. O pacote Série de um controle 0.13.0 acrescenta sete efeitos e inclui o DriveTone já presente na base. Os dois pacotes usam a pasta `SonmooKit`.
+Coleção de **19 efeitos VST3 x64 para Windows**, com controles automatizáveis e ajustes salvos no projeto. A coleção base 0.12.1 reúne 12 efeitos. O pacote Dial 0.13.2 traz oito efeitos de um controle, incluindo o antigo DriveTone. Procure por **Dial** no gerenciador de plugins. Os dois pacotes usam a pasta `SonmooKit`.
 
 [Série de um controle](docs/serie-um-controle.md) · [Instalação](#instalação) · [Manuais ilustrados](#manuais-ilustrados) · [Compilação e testes](docs/compilacao.md) · [Histórico de versões](docs/historico.md)
 
@@ -22,7 +22,7 @@ Clique no nome ou na imagem para abrir o manual. Os controles aparecem com os no
 | <a href="docs/manuais/SoftCompressor.md"><img src="docs/imagens/SoftCompressor.png" width="112" alt="Painel do SoftCompressor"></a> | <a id="softcompressor"></a>[SoftCompressor](docs/manuais/SoftCompressor.md) | Compressão de dinâmica | Renaissance Compressor |
 | <a href="docs/manuais/PeakCeiling.md"><img src="docs/imagens/PeakCeiling.png" width="112" alt="Painel do PeakCeiling"></a> | <a id="peakceiling"></a>[PeakCeiling](docs/manuais/PeakCeiling.md) | Limitador de picos | L1 |
 | <a href="docs/manuais/SibilanceControl.md"><img src="docs/imagens/SibilanceControl.png" width="112" alt="Painel do SibilanceControl"></a> | <a id="sibilancecontrol"></a>[SibilanceControl](docs/manuais/SibilanceControl.md) | Controle de sibilância | Sibilance |
-| <a href="docs/manuais/DriveTone.md"><img src="docs/imagens/DriveTone.png" width="112" alt="Painel do DriveTone"></a> | <a id="drivetone"></a>[DriveTone](docs/manuais/DriveTone.md) | Saturação | OneKnob Driver |
+| <a href="docs/manuais/DriveTone.md"><img src="docs/imagens/DriveTone.png" width="112" alt="Painel do Dial Drive"></a> | <a id="drivetone"></a>[Dial Drive](docs/manuais/DriveTone.md) | Saturação | OneKnob Driver |
 | <a href="docs/manuais/CurveTen.md"><img src="docs/imagens/CurveTen.png" width="112" alt="Painel do CurveTen"></a> | <a id="curveten"></a>[CurveTen](docs/manuais/CurveTen.md) | Equalizador de dez bandas | Q10 |
 | <a href="docs/manuais/VoiceStack.md"><img src="docs/imagens/VoiceStack.png" width="112" alt="Painel do VoiceStack"></a> | <a id="voicestack"></a>[VoiceStack](docs/manuais/VoiceStack.md) | Dobra de voz | Doubler |
 | <a href="docs/manuais/PulseEQ.md"><img src="docs/imagens/PulseEQ.png" width="112" alt="Painel do PulseEQ"></a> | <a id="pulseeq"></a>[PulseEQ](docs/manuais/PulseEQ.md) | Equalizador dinâmico | F6 |
@@ -30,10 +30,10 @@ Clique no nome ou na imagem para abrir o manual. Os controles aparecem com os no
 | <a href="docs/manuais/OptoLevel2A.md"><img src="docs/imagens/OptoLevel2A.png" width="112" alt="Painel do OptoLevel 2A"></a> | <a id="optolevel-2a"></a>[OptoLevel 2A](docs/manuais/OptoLevel2A.md) | Compressor óptico | CLA-2A |
 | <a href="docs/manuais/SonmooTune.md"><img src="docs/imagens/SonmooTune.png" width="112" alt="Painel do SonmooTune"></a> | <a id="sonmootune"></a>[SonmooTune](docs/manuais/SonmooTune.md) | Correção de afinação vocal | Waves Tune Real-Time |
 | <a href="docs/manuais/StereoArc.md"><img src="docs/imagens/StereoArc.png" width="112" alt="Painel do StereoArc"></a> | <a id="stereoarc"></a>[StereoArc](docs/manuais/StereoArc.md) | Imagem estéreo | S1 Imager |
-| <a href="docs/manuais/AirLift.md"><img src="docs/imagens/AirLift.png" width="112" alt="Painel do AirLift"></a> | [AirLift](docs/manuais/AirLift.md) | Brilho progressivo | OneKnob Brighter |
-| <a href="docs/manuais/BassBody.md"><img src="docs/imagens/BassBody.png" width="112" alt="Painel do BassBody"></a> | [BassBody](docs/manuais/BassBody.md) | Reforço de graves | OneKnob Phatter |
-| <a href="docs/manuais/SweepTone.md"><img src="docs/imagens/SweepTone.png" width="112" alt="Painel do SweepTone"></a> | [SweepTone](docs/manuais/SweepTone.md) | Filtro ressonante | OneKnob Filter |
-| <a href="docs/manuais/DrumPress.md"><img src="docs/imagens/DrumPress.png" width="112" alt="Painel do DrumPress"></a> | [DrumPress](docs/manuais/DrumPress.md) | Compressão paralela | OneKnob Pressure |
-| <a href="docs/manuais/LevelLift.md"><img src="docs/imagens/LevelLift.png" width="112" alt="Painel do LevelLift"></a> | [LevelLift](docs/manuais/LevelLift.md) | Elevação de nível | OneKnob Louder |
-| <a href="docs/manuais/BeatDip.md"><img src="docs/imagens/BeatDip.png" width="112" alt="Painel do BeatDip"></a> | [BeatDip](docs/manuais/BeatDip.md) | Pulsação sincronizada | OneKnob Pumper |
-| <a href="docs/manuais/RoomBloom.md"><img src="docs/imagens/RoomBloom.png" width="112" alt="Painel do RoomBloom"></a> | [RoomBloom](docs/manuais/RoomBloom.md) | Ambiência e reverb | OneKnob Wetter |
+| <a href="docs/manuais/AirLift.md"><img src="docs/imagens/AirLift.png" width="112" alt="Painel do Dial Bright"></a> | [Dial Bright](docs/manuais/AirLift.md) | Brilho progressivo | OneKnob Brighter |
+| <a href="docs/manuais/BassBody.md"><img src="docs/imagens/BassBody.png" width="112" alt="Painel do Dial Bass"></a> | [Dial Bass](docs/manuais/BassBody.md) | Reforço de graves | OneKnob Phatter |
+| <a href="docs/manuais/SweepTone.md"><img src="docs/imagens/SweepTone.png" width="112" alt="Painel do Dial Filter"></a> | [Dial Filter](docs/manuais/SweepTone.md) | Filtro ressonante | OneKnob Filter |
+| <a href="docs/manuais/DrumPress.md"><img src="docs/imagens/DrumPress.png" width="112" alt="Painel do Dial Press"></a> | [Dial Press](docs/manuais/DrumPress.md) | Compressão paralela | OneKnob Pressure |
+| <a href="docs/manuais/LevelLift.md"><img src="docs/imagens/LevelLift.png" width="112" alt="Painel do Dial Lift"></a> | [Dial Lift](docs/manuais/LevelLift.md) | Elevação de nível | OneKnob Louder |
+| <a href="docs/manuais/BeatDip.md"><img src="docs/imagens/BeatDip.png" width="112" alt="Painel do Dial Pump"></a> | [Dial Pump](docs/manuais/BeatDip.md) | Pulsação sincronizada | OneKnob Pumper |
+| <a href="docs/manuais/RoomBloom.md"><img src="docs/imagens/RoomBloom.png" width="112" alt="Painel do Dial Verb"></a> | [Dial Verb](docs/manuais/RoomBloom.md) | Ambiência e reverb | OneKnob Wetter |

@@ -1,10 +1,10 @@
-# BeatDip
+# Dial Pump
 
 [← Catálogo SonmooKit](../../README.md#manuais-ilustrados) · [Guia da série e referências](../serie-um-controle.md)
 
 **Pulsação sincronizada.** Cria quedas de volume periódicas com um oscilador sincronizado ao andamento e à posição musical do host. Funciona como efeito de bombeamento sem precisar de uma pista de disparo.
 
-![Painel do BeatDip](../imagens/BeatDip.png)
+![Painel do Dial Pump](../imagens/BeatDip.png)
 
 ## Controles
 
