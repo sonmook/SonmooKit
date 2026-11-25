@@ -91,6 +91,7 @@ public:
         float closest = 15;
         for (int i = 0; i < 4; ++i)
         {
+            if (value(id(i, "on")) <= .5f) continue;
             findNode(point, position(i), i, 1, closest);
             findNode(point, timing(i), i, 2, closest);
         }
@@ -287,7 +288,8 @@ private:
         for (const float angle : {-float(pi / 4), 0.f, float(pi / 4)})
             g.drawLine(juce::Line<float>(origin, origin.getPointOnCircumference(117, angle)), 1.f);
         for (int i = 0; i < 4; ++i)
-            marker(g, position(i), colours[i].withAlpha(value(id(i, "on")) > .5f ? 1.f : .35f), juce::String(i + 1));
+            if (value(id(i, "on")) > .5f)
+                marker(g, position(i), colours[i], juce::String(i + 1));
         caption(g, "L", 32, 208, 34);
         caption(g, "R", 260, 208, 34);
     }
@@ -305,7 +307,8 @@ private:
         g.setColour(line.brighter(.35f));
         g.drawHorizontalLine(int(timingArea.getCentreY()), timingArea.getX(), timingArea.getRight());
         for (int i = 0; i < 4; ++i)
-            marker(g, timing(i), colours[i].withAlpha(value(id(i, "on")) > .5f ? 1.f : .35f), juce::String(i + 1));
+            if (value(id(i, "on")) > .5f)
+                marker(g, timing(i), colours[i], juce::String(i + 1));
     }
 
     void drawShelf(juce::Graphics& g)

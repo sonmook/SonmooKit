@@ -334,7 +334,7 @@ private:
     {
         auto& control = *controls[static_cast<size_t>(slot)];
         control.label.setBounds(x, y, width, 20);
-        control.slider.setBounds(x + 3, y + 20, width - 6, height);
+        control.slider.setBounds(x + 3, y + 24, width - 6, height - 24);
     }
 
     void paintShell(juce::Graphics& g)

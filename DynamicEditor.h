@@ -13,8 +13,8 @@ public:
             tabs[i].setBounds(39 + i * 74, 383, 64, 28);
             addAndMakeVisible(tabs[i]);
         }
-        configureToggle(hp, "HP", {38, 435, 59, 24});
-        configureToggle(lp, "LP", {345, 435, 59, 24});
+        configureToggle(hp, "HP", {38, 435, 49, 24});
+        configureToggle(lp, "LP", {345, 435, 49, 24});
         configureToggle(autoRelease, "Adaptive release", {710, 435, 146, 24});
         spectrumSource.addItemList({"L+R", "Left", "Right", "Side"}, 1);
         spectrumSource.setBounds(696, 23, 98, 27);

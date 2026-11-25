@@ -19,6 +19,18 @@ Projeto C++ com JUCE 8.0.6. Gera doze efeitos VST3 x64 independentes, com interf
 
 [Comparação dos dez efeitos com os manuais Waves e mudanças da versão 0.12.0](docs/revisao-0.12.0.md)
 
+## Instalação da coleção 0.12.1 no Windows
+
+A distribuição completa reúne os 12 efeitos na pasta **SonmooKit**. Feche o FL Studio e copie essa pasta para a pasta de plugins do Windows, para que o caminho fique como no exemplo abaixo.
+
+```text
+C:\Program Files\Common Files\VST3\SonmooKit\StereoEcho.vst3
+```
+
+Se já instalou os efeitos soltos na raiz de VST3, mova primeiro os 12 bundles SonmooKit para uma pasta de backup fora das pastas pesquisadas pelo FL Studio. Depois copie a nova coleção e faça uma busca em **Options → Manage plugins → Find installed plugins** com **Verify plugins** e **Rescan previously verified plugins** ativados.
+
+A revisão visual separa rótulos, botões e valores no StereoEcho, SoftCompressor, PeakCeiling e SibilanceControl, reposiciona a leitura do medidor do FETStrike e mostra nos gráficos do VoiceStack as vozes ativas. No PulseEQ, os seletores HP e LP ganharam espaço em relação aos controles de frequência. Os outros cinco efeitos acompanham a coleção em suas versões anteriores.
+
 ## Manuais ilustrados
 
 No FL Studio, abra o Mixer e carregue o efeito em um slot da pista que deseja processar. Na tabela acima, clique no nome do plugin para ir direto ao seu manual.

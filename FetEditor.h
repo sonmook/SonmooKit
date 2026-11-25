@@ -177,7 +177,7 @@ private:
         g.setFont(juce::FontOptions(13.f, juce::Font::bold));
         const juce::String reading = mode == 0 ? juce::String(current, 1) + " dB GR"
             : current <= -60 ? juce::String("-inf dBFS") : juce::String(current, 1) + " dBFS";
-        g.drawText(reading, 567, 188, 180, 19, juce::Justification::centred);
+        g.drawText(reading, 567, 226, 180, 17, juce::Justification::centred);
     }
 
     void timerCallback() override
