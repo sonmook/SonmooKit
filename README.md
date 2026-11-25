@@ -1,6 +1,6 @@
 # SonmooKit para FL Studio
 
-Projeto C++ com JUCE 8.0.6. Gera dez efeitos VST3 x64 independentes, com interface própria, medidores em tempo real, parâmetros automatizáveis e restauração de estado no projeto.
+Projeto C++ com JUCE 8.0.6. Gera onze efeitos VST3 x64 independentes, com interface própria, medidores em tempo real, parâmetros automatizáveis e restauração de estado no projeto.
 
 | Efeito | Referência funcional | Controles |
 | --- | --- | --- |
@@ -13,7 +13,18 @@ Projeto C++ com JUCE 8.0.6. Gera dez efeitos VST3 x64 independentes, com interfa
 | VoiceStack | Doubler | Quatro vozes com ganho, pan, delay, detune, feedback, oitava e modulação por voz |
 | PulseEQ | F6 | Seis bandas dinâmicas, cortes, analisador e sidechain por banda |
 | FETStrike | CLA-76 | Compressor FET com Input, Output, tempos, quatro ratios, All e medidor de agulha |
+| OptoLevel 2A | CLA-2A | Gain, Peak Reduction, Compress/Limit, HiFreq, medidor VU, Analog, Auto makeup, Mix e Trim |
 | SonmooTune | Waves Tune Real-Time | Correção vocal por escala ou MIDI, tolerância, transições, vibrato, referência e teclado interativo |
+
+## OptoLevel 2A 0.10.0
+
+Compressor óptico mono ou estéreo, com detecção vinculada entre os canais e zero amostras de latência declarada. Aumente **Peak Reduction** para comprimir e use **Gain** para acertar o volume. O ponto de referência de ganho unitário é 32,28. Em **Compress**, a curva é mais suave. **Limit** aplica mais redução e ainda permite a passagem dos transientes durante o ataque.
+
+A envoltória tem ataque nominal de 10 ms e dois estágios de recuperação. O estágio lento acumula redução durante sons fortes e sustentados. **HiFreq** em 100 mantém o detector plano. Girar o controle para a esquerda reduz a influência dos graves sobre a compressão. **VU Display** alterna entre entrada, redução e saída. Os medidores de nível usam uma senoide de pico −18 dBFS como referência para 0 VU. **Analog** seleciona ruído e hum de 50 ou 60 Hz, **Auto makeup** compensa parte da perda prevista, **Mix** permite compressão paralela e **Trim** atua sobre a saída final.
+
+No teste a 48 kHz, uma senoide de 1 kHz com pico de −6,02 dBFS, Gain em 32,28, Peak Reduction em 65, HiFreq em 100 e Analog e Auto makeup desligados resultou em 14,41 dB de atenuação em Compress e 20,43 dB em Limit. Em Compress, 300 ms depois de reduzir o estímulo a −60 dBFS, a atenuação residual foi de aproximadamente 1,50 dB após 100 ms de sinal forte e 6,04 dB após três segundos. São medidas deste DSP original.
+
+Referências de projeto: [controles do Waves CLA-2A](https://assets.wavescdn.com/pdf/plugins/cla-2a-compressor-limiter-v16-update.pdf) e [funcionamento da célula óptica do Teletronix LA-2A](https://media.uaudio.com/assetlibrary/l/a/la-2a_manual.pdf).
 
 ## SonmooTune 0.9.0
 
@@ -63,7 +74,7 @@ Requer Visual Studio 2022 com **Desktop development with C++**, Windows SDK, Git
 
 ```powershell
 cmake -S . -B build -G "Visual Studio 17 2022" -A x64
-cmake --build build --config Release --target StereoEcho_VST3 SoftCompressor_VST3 PeakCeiling_VST3 SibilanceControl_VST3 DriveTone_VST3 CurveTen_VST3 VoiceStack_VST3 PulseEQ_VST3 FETStrike_VST3 PitchPilot_VST3
+cmake --build build --config Release --target StereoEcho_VST3 SoftCompressor_VST3 PeakCeiling_VST3 SibilanceControl_VST3 DriveTone_VST3 CurveTen_VST3 VoiceStack_VST3 PulseEQ_VST3 FETStrike_VST3 PitchPilot_VST3 OptoLevel2A_VST3
 ```
 
 Os bundles completos ficam em `build/<Efeito>_artefacts/Release/VST3/`. Copie cada pasta `.vst3` inteira para `C:\Program Files\Common Files\VST3`. No FL Studio, abra **Options > Manage plugins**, ative **Verify plugins** e faça a busca. Carregue os efeitos em slots do Mixer. Consulte o [manual de instalação de plugins do FL Studio](https://www.image-line.com/fl-studio-learning/fl-studio-online-manual/html/basics_externalplugins.htm).
