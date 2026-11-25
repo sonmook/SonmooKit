@@ -4,7 +4,7 @@ class OptoSkin final : public juce::LookAndFeel_V4
 public:
     void drawRotarySlider(juce::Graphics& g,int x,int y,int w,int h,float position,float start,float end,juce::Slider&) override
     {
-        const float r=.43f*std::min(w,h);
+        const float r=juce::jmax(1.f,.5f*std::min(w,h)-9.f);
         const juce::Point<float> centre(x+w*.5f,y+h*.5f);
         const auto disk=juce::Rectangle<float>(2*r,2*r).withCentre(centre);
         for(int i=0;i<=20;++i)
@@ -29,7 +29,7 @@ public:
         setLookAndFeel(&skin);
         const char* ids[]{"gain","peak","focus","mix","trim"};
         const char* names[]{"Gain","Peak Reduction","HiFreq","Mix (%)","Trim (dB)"};
-        const juce::Rectangle<int> areas[]{{72,99,160,155},{604,99,160,155},{24,308,120,73},{554,308,120,73},{683,308,120,73}};
+        const juce::Rectangle<int> areas[]{{72,105,160,150},{604,105,160,150},{24,328,120,84},{554,328,120,84},{683,328,120,84}};
         for(int i=0;i<5;++i)
         {
             auto& knob=dials[i];addAndMakeVisible(knob);knob.setBounds(areas[i]);knob.setTitle(names[i]);
@@ -45,14 +45,14 @@ public:
             box.setColour(juce::ComboBox::backgroundColourId,juce::Colour(0xff253331));
             picks[i]=std::make_unique<State::ComboBoxAttachment>(state,id,box);
         };
-        menu(0,"mode",{"Compress","Limit"},{174,324,110,30});
-        menu(1,"analog",{"Off","50 Hz","60 Hz"},{307,324,91,30});
-        menu(2,"meter",{"Input","GR","Output"},{370,234,96,26});
+        menu(0,"mode",{"Compress","Limit"},{174,343,110,30});
+        menu(1,"analog",{"Off","50 Hz","60 Hz"},{307,343,91,30});
+        menu(2,"meter",{"Input","GR","Output"},{435,234,96,26});
         automatic.setButtonText("Auto makeup");automatic.setColour(juce::ToggleButton::textColourId,juce::Colour(0xff152522));
         automatic.setColour(juce::ToggleButton::tickColourId,juce::Colour(0xff17765f));
-        addAndMakeVisible(automatic);automatic.setBounds(414,323,128,31);
+        addAndMakeVisible(automatic);automatic.setBounds(414,342,128,31);
         autoLink=std::make_unique<State::ButtonAttachment>(state,"auto",automatic);
-        setSize(836,399);startTimerHz(40);
+        setSize(836,430);startTimerHz(40);
     }
     ~OptoPanel() override {stopTimer();setLookAndFeel(nullptr);}
     void paint(juce::Graphics& g) override
@@ -61,7 +61,7 @@ public:
         auto label=[&](String text,int x,int y,int w,int h,float size,Colour ink)
         {g.setColour(ink);g.setFont(FontOptions(size,Font::bold));g.drawText(text,x,y,w,h,Justification::centred);};
         const Colour ink(0xff273431),white(0xffeff2e8);
-        g.setGradientFill({Colour(0xffe5e6d9),0,52,Colour(0xffa3aaa0),0,399,false});g.fillAll();
+        g.setGradientFill({Colour(0xffe5e6d9),0,52,Colour(0xffa3aaa0),0,430,false});g.fillAll();
         g.setColour(Colour(0xff182522));g.fillRect(0,0,836,51);SonmooBrand::draw(g,24,13,24);
         label("OptoLevel 2A",555,5,256,39,27,white);
         label("GAIN",72,72,160,27,20,ink);label("PEAK REDUCTION",582,72,204,27,20,ink);
@@ -83,16 +83,16 @@ public:
             g.setColour(ink);g.drawLine({pivot.getPointOnCircumference(96,a),pivot.getPointOnCircumference(106,a)},1.6f);
             if(i<6)fraction+=jlimit(0.f,1.f,(level-ticks[i])/(ticks[i+1]-ticks[i]))/6.f;
         }
-        label(gr?"GAIN REDUCTION":"VU",356,141,124,19,14,ink);
+        label(gr?"GAIN REDUCTION":"VU LEVEL",288,234,142,26,13,ink);
         g.setColour(Colour(0xffa44835));g.drawLine({pivot,pivot.getPointOnCircumference(106,-.96f+1.92f*fraction)},2.4f);
         g.setColour(ink);g.fillEllipse(413,206,10,10);
         label("OPTICAL LEVELING AMPLIFIER",248,263,340,20,13,ink);
         g.setColour(Colour(0xff808c83));g.drawHorizontalLine(289,24,812);
-        label("HiFreq",24,292,120,20,13,ink);label("MODE",174,297,110,20,13,ink);
-        label("ANALOG",307,297,91,20,13,ink);label("MIX  %",554,292,120,20,13,ink);label("TRIM  dB",683,292,120,20,13,ink);
+        label("HiFreq",24,297,120,20,13,ink);label("MODE",174,297,110,20,13,ink);
+        label("ANALOG",307,297,91,20,13,ink);label("MIX  %",554,297,120,20,13,ink);label("TRIM  dB",683,297,120,20,13,ink);
     }
 private:
-    void timerCallback() override {repaint(280,70,276,157);}
+    void timerCallback() override {repaint(280,70,276,190);}
     State& state;OptoLevel& engine;OptoSkin skin;
     std::array<juce::Slider,5> dials;std::array<juce::ComboBox,3> menus;juce::ToggleButton automatic;
     std::array<std::unique_ptr<State::SliderAttachment>,5> links;

@@ -16,7 +16,7 @@ Projeto C++ com JUCE 8.0.6. Gera onze efeitos VST3 x64 independentes, com interf
 | OptoLevel 2A | CLA-2A | Gain, Peak Reduction, Compress/Limit, HiFreq, medidor VU, Analog, Auto makeup, Mix e Trim |
 | SonmooTune | Waves Tune Real-Time | Correção vocal por escala ou MIDI, tolerância, transições, vibrato, referência e teclado interativo |
 
-## OptoLevel 2A 0.10.0
+## OptoLevel 2A 0.10.1
 
 Compressor óptico mono ou estéreo, com detecção vinculada entre os canais e zero amostras de latência declarada. Aumente **Peak Reduction** para comprimir e use **Gain** para acertar o volume. O ponto de referência de ganho unitário é 32,28. Em **Compress**, a curva é mais suave. **Limit** aplica mais redução e ainda permite a passagem dos transientes durante o ataque.
 
