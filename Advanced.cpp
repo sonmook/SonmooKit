@@ -135,7 +135,9 @@ Biquad filter(double rate, double f, double gain, double q, int type)
     const double w = 2 * pi * std::clamp(f, 1.0, rate * .485) / rate;
     const double s = std::sin(w), c = std::cos(w);
     const double a = std::pow(10., gain / 40);
-    if (type == 5) q *= 1 + std::abs(gain) / 12;
+    // Prism bell bandwidth is calibrated against the measured 1 kHz reference.
+    if (EFFECT_KIND == 19 && type == 0) q *= std::sqrt(.5);
+    if (EFFECT_KIND != 19 && type == 5) q *= 1 + std::abs(gain) / 12;
     const double alpha = (isEqualiser && (type == 3 || type == 4)) ? s / std::sqrt(2.) : s / (2 * q);
     double b0, b1, b2, a0, a1, a2;
     if (type == 1 || type == 2)
@@ -159,6 +161,13 @@ Biquad filter(double rate, double f, double gain, double q, int type)
             a1 = 2 * ((a - 1) - (a + 1) * c);
             a2 = (a + 1) - (a - 1) * c - k;
         }
+    }
+    else if (EFFECT_KIND == 19 && type >= 5)
+    {
+        a0 = 1 + alpha; a1 = -2 * c; a2 = 1 - alpha;
+        if (type == 5) { b0 = b2 = 1; b1 = a1; }
+        else if (type == 6) { b0 = alpha; b1 = 0; b2 = -alpha; }
+        else { b0 = a2; b1 = a1; b2 = a0; }
     }
     else if (type == 3 || type == 4)
     {
@@ -210,7 +219,7 @@ struct DisplayData
     }
 };
 
-#if EFFECT_KIND == 7
+#if EFFECT_KIND == 7 || EFFECT_KIND == 19
 #include "DynamicEQ.h"
 #else
 #include "VoiceEditor.h"

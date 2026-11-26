@@ -1,6 +1,6 @@
 # SonmooKit para FL Studio
 
-Coleção de **19 efeitos VST3 x64 para Windows**, com controles automatizáveis e ajustes salvos no projeto. A coleção base 0.12.1 reúne 12 efeitos. O pacote Dial 0.13.2 traz oito efeitos de um controle, incluindo o antigo DriveTone. Procure por **Dial** no gerenciador de plugins. Os dois pacotes usam a pasta `SonmooKit`. Ao atualizar a série Dial, mova os oito efeitos de nome antigo para um backup fora da pasta VST3 antes de copiar as novas pastas. Consulte a [tabela de nomes anteriores e atuais](docs/serie-um-controle.md).
+Coleção de **20 efeitos VST3 x64 para Windows**, com controles automatizáveis e ajustes salvos no projeto. O [PrismEQ 0.14.0](docs/manuais/PrismEQ.md) acrescenta um equalizador de 24 bandas com dinâmica espectral. A coleção base 0.12.1 reúne 12 efeitos. O pacote Dial 0.13.2 traz oito efeitos de um controle, incluindo o antigo DriveTone. Procure por **Dial** no gerenciador de plugins. Os dois pacotes usam a pasta `SonmooKit`. Ao atualizar a série Dial, mova os oito efeitos de nome antigo para um backup fora da pasta VST3 antes de copiar as novas pastas. Consulte a [tabela de nomes anteriores e atuais](docs/serie-um-controle.md).
 
 [Série de um controle](docs/serie-um-controle.md) · [Instalação](#instalação) · [Manuais ilustrados](#manuais-ilustrados) · [Compilação e testes](docs/compilacao.md) · [Histórico de versões](docs/historico.md)
 
@@ -37,3 +37,4 @@ Clique no nome ou na imagem para abrir o manual. Os controles aparecem com os no
 | <a href="docs/manuais/LevelLift.md"><img src="docs/imagens/LevelLift.png" width="112" alt="Painel do Dial Lift"></a> | [Dial Lift](docs/manuais/LevelLift.md) | Elevação de nível | OneKnob Louder |
 | <a href="docs/manuais/BeatDip.md"><img src="docs/imagens/BeatDip.png" width="112" alt="Painel do Dial Pump"></a> | [Dial Pump](docs/manuais/BeatDip.md) | Pulsação sincronizada | OneKnob Pumper |
 | <a href="docs/manuais/RoomBloom.md"><img src="docs/imagens/RoomBloom.png" width="112" alt="Painel do Dial Verb"></a> | [Dial Verb](docs/manuais/RoomBloom.md) | Ambiência e reverb | OneKnob Wetter |
+| <a href="docs/manuais/PrismEQ.md"><img src="docs/imagens/PrismEQ.png" width="112" alt="Painel do PrismEQ"></a> | [PrismEQ](docs/manuais/PrismEQ.md) | Equalização dinâmica e espectral | FabFilter Pro-Q 4 |

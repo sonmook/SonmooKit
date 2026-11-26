@@ -2,6 +2,10 @@
 
 [← Voltar ao README](../README.md)
 
+## PrismEQ 0.14.0
+
+Novo VST3 independente com 24 bandas, edição no gráfico, modos Live e Spectral ready e comparação de perfis. [Manual e medições](manuais/PrismEQ.md)
+
 ## Dial 0.13.2
 
 Os oito efeitos receberam nomes com o prefixo Dial no Mixer e nos painéis. As pastas VST3 também usam o prefixo Dial. Os identificadores dos efeitos e parâmetros foram preservados. [Nomes anteriores e atuais](serie-um-controle.md)

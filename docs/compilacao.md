@@ -6,7 +6,7 @@ Requer Visual Studio 2022 com **Desktop development with C++**, Windows SDK, Git
 
 ```powershell
 cmake -S . -B build -G "Visual Studio 17 2022" -A x64
-cmake --build build --config Release --target StereoEcho_VST3 SoftCompressor_VST3 PeakCeiling_VST3 SibilanceControl_VST3 DriveTone_VST3 CurveTen_VST3 VoiceStack_VST3 PulseEQ_VST3 FETStrike_VST3 PitchPilot_VST3 OptoLevel2A_VST3 StereoArc_VST3 AirLift_VST3 BassBody_VST3 SweepTone_VST3 DrumPress_VST3 LevelLift_VST3 BeatDip_VST3 RoomBloom_VST3
+cmake --build build --config Release --target StereoEcho_VST3 SoftCompressor_VST3 PeakCeiling_VST3 SibilanceControl_VST3 DriveTone_VST3 CurveTen_VST3 VoiceStack_VST3 PulseEQ_VST3 FETStrike_VST3 PitchPilot_VST3 OptoLevel2A_VST3 StereoArc_VST3 AirLift_VST3 BassBody_VST3 SweepTone_VST3 DrumPress_VST3 LevelLift_VST3 BeatDip_VST3 RoomBloom_VST3 PrismEQ_VST3
 ```
 
 Os bundles completos ficam em `build/<Efeito>_artefacts/Release/VST3/`. Copie cada pasta `.vst3` inteira para `C:\Program Files\Common Files\VST3\SonmooKit`. No FL Studio, abra **Options > Manage plugins**, ative **Verify plugins** e faça a busca. Carregue os efeitos em slots do Mixer. Consulte o [manual de instalação de plugins do FL Studio](https://www.image-line.com/fl-studio-learning/fl-studio-online-manual/html/basics_externalplugins.htm).
@@ -29,3 +29,7 @@ cmake -S . -B build -DSONMOOKIT_BUILD_MACRO_CHECK=ON
 cmake --build build --config Release --target MacroCheck AirLift_VST3
 .\build\Release\MacroCheck.exe ".\build\AirLift_artefacts\Release\VST3\Dial Bright.vst3"
 ```
+
+## Teste do PrismEQ
+
+Configure com `-DSONMOOKIT_BUILD_PRISM_CHECK=ON`, compile os alvos `PrismCheck` e `PrismEQ_VST3` e execute o verificador indicando a pasta completa de PrismEQ.vst3 como único argumento. Ele usa um host VST3 e testa as taxas de 44,1, 48 e 96 kHz.

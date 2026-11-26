@@ -1,4 +1,23 @@
-constexpr int dynamicBands = 6;
+constexpr bool prism = EFFECT_KIND == 19;
+constexpr int dynamicBands = prism ? 24 : 6;
+#if EFFECT_KIND == 19
+#include "PrismSpectral.h"
+#endif
+juce::StringArray shapes() {
+    juce::StringArray result{"Bell","Low Shelf","High Shelf"};
+    if constexpr (prism) result.addArray(juce::StringArray{"High Cut","Low Cut","Notch","Band Pass","All Pass"});
+    return result;
+}
+juce::StringArray placements() {
+    juce::StringArray result{"Stereo","Mid","Side"};
+    if constexpr (prism) result.addArray(juce::StringArray{"Left","Right"});
+    return result;
+}
+juce::StringArray detectionModes() {
+    juce::StringArray result{"Split","Wide"};
+    if constexpr (prism) result.add("Spectral");
+    return result;
+}
 constexpr std::array<float, dynamicBands> centreFrequencies{45, 125, 350, 1000, 2800, 8000};
 constexpr std::array<const char*, 7> dynamicKeys{"freq", "q", "gain", "range", "threshold", "attack", "release"};
 
@@ -7,6 +26,11 @@ juce::String dynamicId(int band, const char* key)
     return "band" + juce::String(band + 1) + "_" + key;
 }
 
+juce::StringArray spectrumChoices() {
+    juce::StringArray result{"L+R","Left","Right","Side"};
+    if constexpr (prism) result.add("Pre L+R");
+    return result;
+}
 State::ParameterLayout dynamicLayout()
 {
     State::ParameterLayout result;
@@ -33,18 +57,18 @@ State::ParameterLayout dynamicLayout()
         {
             number(dynamicId(i, key), prefix + label, lo, hi, step, value, centre);
         };
-        check(dynamicId(i, "enabled"), prefix + "Enabled", true);
-        n("freq", "Frequency", 16, 21000, .1f, centreFrequencies[i], 1000);
+        check(dynamicId(i, "enabled"), prefix + "Enabled", !prism);
+        n("freq", "Frequency", 16, 21000, .1f, prism ? float(30 * std::pow(600., i/23.)) : centreFrequencies[i], 1000);
         n("q", "Q", .4f, 60, .01f, 1, 3);
         n("gain", "Gain", -18, 18, .1f, 0);
         n("range", "Dynamic Range", -18, 18, .1f, 0);
         n("threshold", "Threshold", -60, 0, .1f, 0);
         n("attack", "Attack", .5f, 500, .1f, 16, 20);
         n("release", "Release", 5, 5000, 1, 160, 180);
-        choice(dynamicId(i, "shape"), prefix + "Shape", {"Bell", "Low Shelf", "High Shelf"});
-        choice(dynamicId(i, "channel"), prefix + "Channel", {"Stereo", "Mid", "Side"});
+        choice(dynamicId(i, "shape"), prefix + "Shape", shapes());
+        choice(dynamicId(i, "channel"), prefix + "Channel", placements());
         choice(dynamicId(i, "source"), prefix + "Key Source", {"Internal", "External"});
-        choice(dynamicId(i, "detect"), prefix + "Detection", {"Split", "Wide"});
+        choice(dynamicId(i, "detect"), prefix + "Detection", detectionModes());
     }
     check("hp", "High Pass", false);
     check("lp", "Low Pass", false);
@@ -57,7 +81,11 @@ State::ParameterLayout dynamicLayout()
         result.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{id, 1},
             juce::String(id) == "hpSlope" ? "High Pass Slope" : "Low Pass Slope",
             juce::StringArray{"6 dB/oct", "12 dB/oct", "18 dB/oct", "24 dB/oct"}, 1));
-    choice("spectrumSource", "Spectrum Source", {"L+R", "Left", "Right", "Side"});
+    choice("spectrumSource", "Spectrum Source", spectrumChoices());
+    if constexpr (prism) {
+        choice("engine","Engine",{"Spectral ready","Live"});
+        choice("character","Character",{"Clean","Soft","Dense"});
+    }
     return result;
 }
 
@@ -155,6 +183,10 @@ public:
             p.enabled = get("enabled"); p.shape = get("shape"); p.channel = get("channel");
             p.source = get("source"); p.detect = get("detect");
         }
+        if constexpr (prism) {
+            engine = state.getRawParameterValue("engine");
+            character = state.getRawParameterValue("character");
+        }
         for (size_t i = 0; i < globals.size(); ++i)
             globals[i] = state.getRawParameterValue(globalKeys[i]);
     }
@@ -183,6 +215,9 @@ public:
     void prepareToPlay(double sr, int) override
     {
         rate = std::max(1., sr);
+#if EFFECT_KIND == 19
+        setLatencySamples(engine->load() < .5f ? PrismSpectral::size : 0);
+#endif
         display.sampleRate.store(rate, std::memory_order_relaxed);
         reset();
     }
@@ -190,6 +225,9 @@ public:
     void reset() override
     {
         running = {};
+#if EFFECT_KIND == 19
+        spectral.reset();
+#endif
         passes = {};
         tick = 0;
     }
@@ -209,6 +247,12 @@ public:
         const float output = juce::Decibels::decibelsToGain(g(1));
         const bool adaptive = g(2) > .5f;
         const int spectrumSource = int(g(9));
+#if EFFECT_KIND == 19
+        const bool spectralReady = engine->load() < .5f;
+        const int latency = spectralReady ? PrismSpectral::size : 0;
+        if (latency != getLatencySamples()) { spectral.reset(); setLatencySamples(latency); }
+        const int colourMode = int(character->load());
+#endif
         const auto hp = cutStages(rate, g(4), g(3) > .5f ? int(g(7)) + 1 : 0, true);
         const auto lp = cutStages(rate, g(6), g(5) > .5f ? int(g(8)) + 1 : 0, false);
         std::array<Config, dynamicBands> bands;
@@ -220,7 +264,7 @@ public:
             cfg = {v(0), v(1), v(2), v(3), v(4), coefficient(v(5)), coefficient(v(6)),
                    int(Parameters::get(p.shape)), stereo ? int(Parameters::get(p.channel)) : 0,
                    Parameters::get(p.enabled) > .5f, Parameters::get(p.source) > .5f,
-                   Parameters::get(p.detect) > .5f, {}};
+                   int(Parameters::get(p.detect)) == 1, int(Parameters::get(p.detect)) == 2, {}};
             if (!cfg.wide) cfg.key = keyFilter(rate, cfg.hz, cfg.q, cfg.shape);
         }
 
@@ -238,7 +282,10 @@ public:
             {
                 auto& rt = running[i];
                 const auto& cfg = bands[i];
+                if constexpr (prism) if (!cfg.enabled && i != solo) continue;
                 auto key = cfg.external ? external : raw;
+                if (cfg.channel == 3) key[1] = 0;
+                if (cfg.channel == 4) key[0] = 0;
                 if (cfg.channel == 1) key = { (key[0] + key[1]) * .5f, 0 };
                 if (cfg.channel == 2) key = { (key[0] - key[1]) * .5f, 0 };
                 for (int ch = 0; ch < 2; ++ch) key[ch] = rt.key[ch].process(key[ch], cfg.key);
@@ -248,7 +295,7 @@ public:
                 if (tick == 0 || sample == 0)
                 {
                     const float db = juce::Decibels::gainToDecibels(rt.envelope, -100.f);
-                    const float target = cfg.enabled
+                    const float target = cfg.enabled && !cfg.spectral && cfg.shape < 3
                         ? std::copysign(std::clamp((db - cfg.threshold) * .8f, 0.f, std::abs(cfg.range)), cfg.range)
                         : 0;
                     const float release = adaptive ? std::pow(cfg.release, 1.f / (1.f + std::abs(rt.gain) / 12.f))
@@ -265,7 +312,13 @@ public:
                 if (i == solo)
                     keyListen = cfg.channel == 2 ? std::array<float, 2>{key[0], -key[0]}
                               : cfg.channel == 1 ? std::array<float, 2>{key[0], key[0]} : key;
-                if (cfg.channel == 0)
+                if constexpr (prism) if (!cfg.enabled) continue;
+                if (cfg.channel >= 3)
+                {
+                    const int c = cfg.channel - 3;
+                    wet[c] = rt.audio[c].process(wet[c], rt.filter);
+                }
+                else if (cfg.channel == 0)
                 {
                     for (int ch = 0; ch < channels; ++ch) wet[ch] = rt.audio[ch].process(wet[ch], rt.filter);
                 }
@@ -278,24 +331,43 @@ public:
                     wet = {mid + sideSample, mid - sideSample};
                 }
             }
+            auto aligned = raw;
+#if EFFECT_KIND == 19
+            if (spectralReady) {
+                wet = spectral.process(wet, raw, external, solo >= 0 ? keyListen : raw, rate, bands, aligned);
+                if (solo >= 0) keyListen = aligned;
+            }
+#endif
             for (int ch = 0; ch < channels; ++ch)
             {
                 float shaped = wet[ch];
                 for (int s = 0; s < 2; ++s) shaped = passes[ch][s].process(shaped, hp[s]);
                 for (int s = 0; s < 2; ++s) shaped = passes[ch][2+s].process(shaped, lp[s]);
-                const float result = output * (solo >= 0 ? keyListen[ch] : raw[ch] + mix * (shaped - raw[ch]));
+                if constexpr (prism) {
+#if EFFECT_KIND == 19
+                    if (colourMode != 0) {
+                        const float drive = colourMode == 1 ? 1.25f : 2.5f;
+                        shaped = std::tanh(drive*shaped)/drive;
+                    }
+#endif
+                }
+                const float result = output * (solo >= 0 ? keyListen[ch] : aligned[ch] + mix * (shaped - aligned[ch]));
                 dst[ch][sample] = result;
                 peaks[ch] = std::max(peaks[ch], std::abs(result));
             }
             const float left = dst[0][sample], right = stereo ? dst[1][sample] : left;
             const std::array<float, 4> spectrumInputs{.5f * (left + right), left, right, .5f * (left - right)};
-            display.push(spectrumInputs[spectrumSource]);
+            display.push(spectrumSource == 4 ? .5f*(raw[0]+raw[1]) : spectrumInputs[spectrumSource]);
             tick = (tick + 1) % 16;
         }
 
         for (int i = 0; i < dynamicBands; ++i)
         {
-            display.activity[i].store(running[i].gain, std::memory_order_relaxed);
+            float movement = running[i].gain;
+#if EFFECT_KIND == 19
+            if (bands[i].spectral) movement = spectralReady ? spectral.activity[i] : 0;
+#endif
+            display.activity[i].store(movement, std::memory_order_relaxed);
             display.detector[i].store(running[i].envelope, std::memory_order_relaxed);
         }
         for (int ch = 0; ch < channels; ++ch)
@@ -326,7 +398,7 @@ private:
     {
         float hz, q, staticGain, range, threshold, attack, release;
         int shape, channel;
-        bool enabled, external, wide;
+        bool enabled, external, wide, spectral;
         Biquad key;
     };
     struct Running
@@ -338,6 +410,10 @@ private:
     float coefficient(float ms) const { return float(std::exp(-16000. / (rate * ms))); }
 
     static constexpr std::array<const char*, 10> globalKeys{"mix", "output", "autoRelease", "hp", "hpFreq", "lp", "lpFreq", "hpSlope", "lpSlope", "spectrumSource"};
+#if EFFECT_KIND == 19
+    PrismSpectral spectral;
+#endif
+    std::atomic<float>* engine{}; std::atomic<float>* character{};
     State state;
     DynamicDisplay display;
     std::array<ParametersByBand, dynamicBands> controls{};
